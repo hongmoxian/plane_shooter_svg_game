@@ -5,6 +5,7 @@ class HangarUI {
         this.panel = document.getElementById('hangarPanel');
         this.grid = document.getElementById('aircraftGrid');
         this.skillButton = document.getElementById('skillButton');
+        this.gearButton = document.getElementById('equipmentSkillButton');
         this.returnButton = document.getElementById('backHangarButton');
     }
 
@@ -54,6 +55,10 @@ class HangarUI {
             this.game.useAircraftSkill();
             this.refreshSkill();
         });
+        this.gearButton.addEventListener('click', () => {
+            this.game.useEquipmentSkill();
+            this.refreshSkill();
+        });
         this.returnButton.addEventListener('click', () => {
             this.game.nextLevelIndex = 0;
             this.game.stateMachine.changeState(GameConfig.STATES.MENU);
@@ -82,6 +87,11 @@ class HangarUI {
             ? 'Q · ' + status.name
             : status.name + ' ' + status.remaining.toFixed(1) + 's';
         this.skillButton.disabled = !status.ready;
+        const gear = this.game.equipmentManager.getManualSkillStatus();
+        this.gearButton.textContent = gear.enabled
+            ? (gear.ready ? 'E · ' + gear.name : gear.name + ' ' + gear.remaining.toFixed(1) + 's')
+            : 'E · 穿戴主武器';
+        this.gearButton.disabled = !gear.ready;
     }
 
     sync() {
@@ -91,6 +101,7 @@ class HangarUI {
         const finished = state === GameConfig.STATES.LEVEL_COMPLETE || state === GameConfig.STATES.GAME_OVER || state === GameConfig.STATES.PAUSED;
         this.panel.classList.toggle('hidden', !inMenu);
         this.skillButton.classList.toggle('hidden', !playing);
+        this.gearButton.classList.toggle('hidden', !playing);
         this.returnButton.classList.toggle('hidden', !finished);
         this.refreshCards();
         this.refreshSkill();

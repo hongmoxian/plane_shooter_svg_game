@@ -303,7 +303,12 @@ class Player {
      */
     takeDamage(damage) {
         if (this.isInvincible || this.isDead || this.shieldActive) return;
-        
+        // Equipment interceptors may block or reduce damage before health changes.
+        if (typeof this.beforeDamageHook === 'function') {
+            damage = this.beforeDamageHook(damage);
+        }
+        if (!(damage > 0) || !Number.isFinite(damage)) return;
+
         this.health -= damage;
         
         if (this.health <= 0) {

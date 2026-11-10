@@ -74,6 +74,7 @@ class Game {
         this.assetManager = new AssetManager();
         this.aircraftManager = new AircraftManager(this);
         this.equipmentManager = new EquipmentManager(this);
+        this.player.beforeDamageHook = (damage) => this.equipmentManager.onBeforeDamage(damage);
         this.petManager = new PetManager(this);
         
         // 初始化战斗系统
@@ -174,6 +175,8 @@ class Game {
                 this.bossManager.update(dt, this.player, this.bulletSystem, this.particleSystem);
                 // 两只出战宠物进行自动射击与周期性辅助
                 this.petManager.update(dt);
+                // 独立装备自动技与特效（使用秒制冷却）
+                this.equipmentManager.update(dt);
                 
                 // 更新子弹系统
                 this.bulletSystem.update(dt, this.currentBoss && this.currentBoss.active
@@ -222,6 +225,7 @@ class Game {
                 this.player.reset();
                 this.aircraftManager.prepareForBattle();
                 this.petManager.resetBattle();
+                this.equipmentManager.resetBattle();
                 // 清空战斗系统
                 this.enemies = [];
                 this.bulletSystem.clear();
@@ -256,7 +260,7 @@ class Game {
                 if (this.gameLoop.frameCount < 180) { // 前3秒显示提示
                     renderer.drawText('游戏开始！', 320, 200, 32, '#00FF00');
                     renderer.drawText('使用方向键或WASD移动', 320, 240, 20, '#FFFFFF');
-                    renderer.drawText('按 Q 使用战机技能', 320, 270, 20, '#FFFFFF');
+                    renderer.drawText('Q 战机技能 / E 装备技能', 320, 270, 20, '#FFFFFF');
                 }
                 
                 // 显示切换战机消息
@@ -330,6 +334,7 @@ class Game {
                 
                 // 绘制跟随战机的两只宠物（原创简易图标）
                 this.petManager.render(renderer);
+                this.equipmentManager.render(renderer);
                 // 绘制HUD
                 renderer.drawHUD({
                     health: this.player.health,
@@ -741,6 +746,11 @@ class Game {
     /** 主动技能入口，供键盘 Q 和触屏按钮共用。 */
     useAircraftSkill() {
         return this.aircraftManager.useSkill();
+    }
+
+    /** 装备主武器的 E 键主动技能。 */
+    useEquipmentSkill() {
+        return this.equipmentManager.useEquipmentSkill();
     }
     
     /**

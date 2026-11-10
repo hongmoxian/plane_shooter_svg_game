@@ -203,6 +203,16 @@ class CollectionUI {
                 ' · ' + (rec ? 'Lv.' + rec.level + ' ×' + rec.copies : '尚未获得');
             title.append(name, note);
             top.append(symbol, title);
+            const skillInfo = document.createElement('div');
+            skillInfo.className = 'gear-ability';
+            const ability = def.ability;
+            const triggerName = ability?.trigger === 'manual' ? 'E主动'
+                : ability?.trigger === 'auto' ? '自动'
+                : ability?.trigger === 'on_hit' ? '受击' : 'Q联动';
+            skillInfo.textContent = ability
+                ? '✦ ' + ability.name + ' · ' + triggerName +
+                    (ability.cooldown > 0 ? ' / ' + ability.cooldown + 's' : '') + ' — ' + ability.description
+                : '基础被动：提升' + ({damage:'伤害',health:'生命',speed:'速度',energy:'能量'}[def.bonus] || '属性');
             const actions = document.createElement('div');
             actions.className = 'gear-actions';
             const addButton = (label, action, allowed = true) => {
@@ -223,7 +233,7 @@ class CollectionUI {
             addButton('满级', () => {
                 if (this.system.upgrade(def.id, true)) this.refreshAll();
             }, !!rec && rec.level < 10);
-            card.append(top, actions);
+            card.append(top, skillInfo, actions);
             root.appendChild(card);
         }
     }

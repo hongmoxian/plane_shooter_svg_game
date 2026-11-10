@@ -215,7 +215,7 @@
             box-shadow: 0 16px 55px rgba(0, 0, 0, .62);
             color: #fff;
         }
-        #hangarPanel.hidden, #skillButton.hidden, #backHangarButton.hidden, #pauseButton.hidden { display: none !important; }
+        #hangarPanel.hidden, #skillButton.hidden, #equipmentSkillButton.hidden, #backHangarButton.hidden, #pauseButton.hidden { display: none !important; }
         #hangarPanel h2 { margin: 0 0 6px; font-size: 23px; color: #E6F6FF; text-align: center; }
         #hangarPanel .hangar-subtitle { margin: 0 0 12px; font-size: 12px; color: #A5BCE6; text-align: center; line-height: 1.6; }
         #aircraftGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -381,6 +381,24 @@
             #hangarTabs button { flex: 1 1 30%; font-size: 11px; padding: 7px 1px; }
             .pet-grid { grid-template-columns: 1fr; }
         }
+        #equipmentSkillButton {
+            position: absolute; z-index: 110; bottom: 3%;
+            left: calc(50% - min(50vw, 33.33vh) + 10px);
+            min-width: 142px; min-height: 52px; max-width: 175px;
+            padding: 6px 10px; border: 2px solid #FFDB8A; border-radius: 26px;
+            color: #FFF8DC; font-size: 13px; font-weight: bold;
+            background: linear-gradient(120deg, #8B532D, #B37A33);
+            box-shadow: 0 5px 20px rgba(0,0,0,.5); cursor: pointer;
+        }
+        #equipmentSkillButton:disabled { opacity: .55; cursor: not-allowed; }
+        .gear-ability {
+            color: #CDE9FF; font-size: 10px; line-height: 1.55;
+            margin: 2px 0 8px; min-height: 29px;
+        }
+        .gear-card.legendary .gear-ability { color: #FFE1A7; }
+        @media(max-width:620px) {
+            #equipmentSkillButton { font-size: 11px; min-width: 112px; max-width: 135px; }
+        }
     </style>
 </head>
 <body>
@@ -457,6 +475,7 @@
         </div>
     </section>
     <button type="button" id="skillButton" class="hidden">Q · 战机技能</button>
+    <button type="button" id="equipmentSkillButton" class="hidden">E · 装备技能</button>
     <button type="button" id="backHangarButton" class="hidden">返回仓库 · 更换战机</button>
     
     <!-- 开始按钮 -->
@@ -749,6 +768,11 @@
                     // 战斗中不可更换战机；按 Q 使用选中战机的专属技能
                     if (e.key === 'q' || e.key === 'Q') {
                         game.useAircraftSkill();
+                        e.preventDefault();
+                    }
+                    // E 键手动释放已装备主武器的专属主动技能
+                    else if (e.key === 'e' || e.key === 'E') {
+                        game.useEquipmentSkill();
                         e.preventDefault();
                     }
                     // 空格键放炸弹
