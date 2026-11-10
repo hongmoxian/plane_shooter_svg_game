@@ -173,6 +173,55 @@ class Renderer {
     }
 
     /**
+     * P1 placeholder art: self-drawn silhouettes, not assets extracted from the game.
+     */
+    drawAircraftVector(player) {
+        const ctx = this.ctx;
+        const shapes = {
+            j31: [[0,-34],[-11,-12],[-34,3],[-30,13],[-11,9],[-14,28],[0,19],[14,28],[11,9],[30,13],[34,3],[11,-12]],
+            xiaolong: [[0,-32],[-11,-15],[-31,-6],[-38,12],[-17,12],[-20,29],[0,23],[20,29],[17,12],[38,12],[31,-6],[11,-15]],
+            zero: [[0,-39],[-9,-13],[-24,-15],[-35,14],[-9,7],[-12,29],[0,17],[12,29],[9,7],[35,14],[24,-15],[9,-13]],
+            hades: [[0,-32],[-19,-23],[-25,-9],[-38,9],[-26,21],[-12,15],[-14,29],[0,24],[14,29],[12,15],[26,21],[38,9],[25,-9],[19,-23]]
+        };
+        const points = shapes[player.aircraftId] || shapes.j31;
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.shadowColor = player.aircraftColor || '#44C9FF';
+        ctx.shadowBlur = 18;
+        const fill = ctx.createLinearGradient(0, -32, 0, 30);
+        fill.addColorStop(0, '#F5FAFF');
+        fill.addColorStop(0.34, player.aircraftColor || '#44C9FF');
+        fill.addColorStop(1, '#192B51');
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = '#DCEFFF';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        points.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#19203F';
+        ctx.beginPath();
+        ctx.ellipse(0, -10, 7, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = player.aircraftColor || '#44C9FF';
+        ctx.beginPath();
+        ctx.ellipse(0, -12, 3.5, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (player.shieldActive) {
+            ctx.strokeStyle = '#B1FFDA';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#86FFE1';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(0, 0, 50, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    /**
      * 绘制玩家飞机
      * @param {Object} player - 玩家对象
      * @param {AssetManager} assetManager - 资源管理器（可选）
@@ -180,8 +229,10 @@ class Renderer {
     drawPlayer(player, assetManager = null) {
         this.ctx.save();
         
-        // 如果有资源管理器且已加载，使用SVG资源
-        if (assetManager && assetManager.loaded) {
+        // P1: 四种原创矢量轮廓，避免误用未经授权的原版战机素材。
+        if (player.aircraftId) {
+            this.drawAircraftVector(player);
+        } else if (assetManager && assetManager.loaded) {
             // 根据玩家类型选择战机素材
             const playerType = player.aircraftType || 'fighter';
             assetManager.drawAsset(

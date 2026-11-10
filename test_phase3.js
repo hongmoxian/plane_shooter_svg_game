@@ -96,6 +96,8 @@ loadScript('./js/combat/Weapon.js');
 loadScript('./js/combat/BulletSystem.js');
 loadScript('./js/combat/CollisionSystem.js');
 loadScript('./js/effects/ParticleSystem.js');
+loadScript('./js/data/AircraftCatalog.js');
+loadScript('./js/systems/AircraftManager.js');
 loadScript('./js/levels/LevelManager.js');
 loadScript('./js/levels/WaveManager.js');
 loadScript('./js/boss/Boss.js');

@@ -27,6 +27,7 @@ class Game {
         this.bossManager = null;
         this.powerUpManager = null;
         this.currentBoss = null;
+        this.aircraftManager = null;
         this.nextLevelIndex = 0;
         this.levelResult = null;
         
@@ -69,6 +70,7 @@ class Game {
         this.inputManager = new InputManager();
         this.player = new Player();
         this.assetManager = new AssetManager();
+        this.aircraftManager = new AircraftManager(this);
         
         // 初始化战斗系统
         this.bulletSystem = new BulletSystem();
@@ -106,8 +108,8 @@ class Game {
         this.player.weaponManager.addWeapon('laser', new LaserCannon(1));
         this.player.weaponManager.addWeapon('missile', new MissileLauncher(1));
         
-        // 设置玩家战机类型
-        this.player.aircraftType = 'fighter'; // 可以是 'fighter', 'bomber', 或 'interceptor'
+        // 用战机配置替代原来的 fighter/bomber/interceptor 硬编码属性。
+        this.aircraftManager.applyAircraft();
         
         // 异步加载资源
         this.assetManager.init().then(() => {
@@ -150,6 +152,7 @@ class Game {
                     this.spawnEnemies(dt);
                 }
                 
+                this.aircraftManager.update(dt);
                 // 更新玩家并获取发射的子弹
                 const newBullets = this.player.update(dt, this.inputManager);
                 
@@ -167,7 +170,8 @@ class Game {
                 this.bossManager.update(dt, this.player, this.bulletSystem, this.particleSystem);
                 
                 // 更新子弹系统
-                this.bulletSystem.update(dt, this.enemies);
+                this.bulletSystem.update(dt, this.currentBoss && this.currentBoss.active
+                    ? [...this.enemies, this.currentBoss] : this.enemies);
                 
                 // 更新道具系统
                 this.powerUpManager.update(dt, this.player);
@@ -209,6 +213,7 @@ class Game {
                 console.log('进入游戏状态');
                 // 重置玩家位置和状态
                 this.player.reset();
+                this.aircraftManager.prepareForBattle();
                 // 清空战斗系统
                 this.enemies = [];
                 this.bulletSystem.clear();
@@ -243,7 +248,7 @@ class Game {
                 if (this.gameLoop.frameCount < 180) { // 前3秒显示提示
                     renderer.drawText('游戏开始！', 320, 200, 32, '#00FF00');
                     renderer.drawText('使用方向键或WASD移动', 320, 240, 20, '#FFFFFF');
-                    renderer.drawText('按1/2/3切换战机', 320, 270, 20, '#FFFFFF');
+                    renderer.drawText('按 Q 使用战机技能', 320, 270, 20, '#FFFFFF');
                 }
                 
                 // 显示切换战机消息
@@ -329,6 +334,10 @@ class Game {
                     bombCooldownTime: this.player.bombCooldownTime,
                     fps: this.gameLoop.getFPS()
                 });
+                renderer.drawText(this.aircraftManager.selected.name, 320, 124, 16, this.aircraftManager.selected.color);
+                const skill = this.aircraftManager.getSkillStatus();
+                renderer.drawText(skill.name + (skill.ready ? ' [Q 可用]' : ' ' + skill.remaining.toFixed(1) + 's'),
+                    320, 151, 15, skill.ready ? '#DBFFAE' : '#9DAECC');
                 
                 // 绘制关卡信息
                 if (this.levelManager && this.levelManager.getCurrentLevelInfo()) {
@@ -709,24 +718,19 @@ class Game {
         }
     }
     
-    /**
-     * 切换战机类型
-     * @param {string} type - 战机类型: fighter, bomber, interceptor
-     */
-    switchAircraft(type) {
-        if (this.player.aircraftType !== type) {
-            this.player.aircraftType = type;
-            this.player.updateAircraftStats();
-            
-            // 显示切换消息
-            const typeNames = {
-                'fighter': '战斗机',
-                'bomber': '轰炸机',
-                'interceptor': '拦截机'
-            };
-            this.showMessage = `战机切换: ${typeNames[type]}`;
+    /** 在大厅更换战机，禁止战斗中无成本切换属性。 */
+    switchAircraft(id) {
+        const changed = this.aircraftManager.select(id);
+        if (changed) {
+            this.showMessage = '选择战机：' + this.aircraftManager.selected.name;
             this.messageTimer = 60;
         }
+        return changed;
+    }
+
+    /** 主动技能入口，供键盘 Q 和触屏按钮共用。 */
+    useAircraftSkill() {
+        return this.aircraftManager.useSkill();
     }
     
     /**

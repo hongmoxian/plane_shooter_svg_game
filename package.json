@@ -11,7 +11,8 @@
     "dev": "node dev-server.js",
     "test:phase3": "node test_phase3.js",
     "test:p0": "node test_p0.js",
-    "test:all": "npm test && npm run test:phase3 && npm run test:p0"
+    "test:all": "npm test && npm run test:phase3 && npm run test:p0 && npm run test:aircraft",
+    "test:aircraft": "node test_aircraft.js"
   },
   "keywords": [
     "game",

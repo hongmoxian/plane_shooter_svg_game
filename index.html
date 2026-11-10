@@ -200,11 +200,82 @@
         #bossButton.hidden {
             display: none;
         }
+        /* P1战机仓库：纯前端、原创SVG战机轮廓 */
+        #hangarPanel {
+            position: absolute;
+            z-index: 90;
+            top: 7%; left: 50%; transform: translateX(-50%);
+            width: min(560px, 87vw);
+            max-height: 66vh; overflow-y: auto;
+            box-sizing: border-box;
+            padding: 18px;
+            border: 1px solid rgba(100, 189, 255, .55);
+            border-radius: 18px;
+            background: linear-gradient(150deg, rgba(7, 20, 48, .97), rgba(20, 29, 70, .96));
+            box-shadow: 0 16px 55px rgba(0, 0, 0, .62);
+            color: #fff;
+        }
+        #hangarPanel.hidden, #skillButton.hidden, #backHangarButton.hidden, #pauseButton.hidden { display: none !important; }
+        #hangarPanel h2 { margin: 0 0 6px; font-size: 23px; color: #E6F6FF; text-align: center; }
+        #hangarPanel .hangar-subtitle { margin: 0 0 12px; font-size: 12px; color: #A5BCE6; text-align: center; line-height: 1.6; }
+        #aircraftGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .aircraft-card {
+            cursor: pointer; display: flex; align-items: center; gap: 8px;
+            text-align: left; border: 1px solid #425477; border-radius: 12px;
+            background: #152643; color: #fff; padding: 10px; min-height: 118px;
+        }
+        .aircraft-card.selected { background: #183D59; border-color: #8BE5FF; box-shadow: inset 0 0 0 1px #8BE5FF; }
+        .aircraft-card:hover { border-color: #C0EBFF; }
+        .aircraft-preview { flex: 0 0 60px; width: 60px; height: 84px; }
+        .aircraft-preview svg { display: block; height: 100%; width: 100%; filter: drop-shadow(0 0 8px #70C7FF); }
+        .aircraft-copy { display: grid; gap: 4px; min-width: 0; }
+        .aircraft-copy strong { font-size: 15px; }
+        .aircraft-copy small { color: #B9CDE9; font-size: 11px; }
+        .aircraft-copy span { color: #D8E9FF; font-size: 11px; line-height: 1.5; }
+        #selectedPlaneText { text-align: center; margin: 12px 0 0; color: #AEFFDB; font-size: 13px; }
+        #startButton {
+            top: auto; bottom: 12%; padding: 12px 44px; font-size: 20px;
+            transform: translateX(-50%);
+        }
+        #startButton:hover { transform: translateX(-50%) scale(1.05); }
+        #startButton:active { transform: translateX(-50%) scale(.98); }
+        #bossButton { top: auto !important; bottom: 3% !important; padding: 8px 24px !important; font-size: 14px !important; transform: translateX(-50%) !important; }
+        #controls { display: none; }
+        #skillButton {
+            position: absolute; z-index: 110; bottom: 3%;
+            left: calc(50% + min(50vw, 33.33vh) - 10px); transform: translateX(-100%);
+            min-width: 148px; min-height: 52px;
+            border-radius: 26px; border: 2px solid #CDE7FF; color: #fff;
+            background: linear-gradient(135deg, #435FD0, #892AB8); cursor: pointer;
+            font-size: 14px; font-weight: 700; box-shadow: 0 5px 18px #020617;
+        }
+        #skillButton:disabled { opacity: .65; cursor: not-allowed; }
+        #backHangarButton {
+            position: absolute; z-index: 105; bottom: 3%; left: 50%; transform: translateX(-50%);
+            border: 1px solid #86D8FF; border-radius: 12px; padding: 10px 22px;
+            background: #142C54; color: #DCF4FF; cursor: pointer;
+        }
+        @media (max-width: 620px) {
+            #hangarPanel { top: 5%; width: 94vw; max-height: 70vh; padding: 12px; }
+            #aircraftGrid { grid-template-columns: 1fr; }
+            .aircraft-card { min-height: 74px; }
+            .aircraft-preview { height: 65px; width: 45px; flex-basis: 45px; }
+            #hangarPanel h2 { font-size: 19px; }
+            #audioControls { transform: scale(.68); transform-origin: top right; }
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" tabindex="0"></canvas>
     <div id="debugInfo"></div>
+    <section id="hangarPanel" aria-label="战机仓库">
+        <h2>✦ 战机仓库 · 圆梦计划</h2>
+        <p class="hangar-subtitle">四架战机免费体验 · 技能为网页版原创设计<br>点击卡片选战机，开战后按 Q 使用技能</p>
+        <div id="aircraftGrid"></div>
+        <p id="selectedPlaneText"></p>
+    </section>
+    <button type="button" id="skillButton" class="hidden">Q · 战机技能</button>
+    <button type="button" id="backHangarButton" class="hidden">返回仓库 · 更换战机</button>
     
     <!-- 开始按钮 -->
     <button id="startButton">开始游戏</button>
@@ -293,7 +364,10 @@
     <script src="js/boss/BossManager.js"></script>
     <script src="js/powerups/PowerUp.js"></script>
     <script src="js/powerups/PowerUpManager.js"></script>
+    <script src="js/data/AircraftCatalog.js"></script>
+    <script src="js/systems/AircraftManager.js"></script>
     <script src="js/Game.js"></script>
+    <script src="js/ui/HangarUI.js"></script>
     <script>
         let game;
         
@@ -302,6 +376,8 @@
             game = new Game();
             game.init();
             game.start();
+            const hangarUI = new HangarUI(game);
+            hangarUI.init();
             
             // 获取元素
             const startButton = document.getElementById('startButton');
@@ -367,6 +443,7 @@
             
             // 监听状态变化，显示/隐藏按钮
             game.stateMachine.onStateChange((newState) => {
+                hangarUI.sync();
                 if (newState === GameConfig.STATES.MENU) {
                     startButton.textContent = '开始游戏';
                     startButton.classList.remove('hidden');
@@ -475,20 +552,11 @@
                 
                 // 游戏进行中的控制
                 if (isPlaying && game) {
-                    // 战机切换 (1/2/3)
-                    if (e.key === '1') {
-                        console.log('切换到战斗机');
-                        game.switchAircraft('fighter');
+                    // 战斗中不可更换战机；按 Q 使用选中战机的专属技能
+                    if (e.key === 'q' || e.key === 'Q') {
+                        game.useAircraftSkill();
                         e.preventDefault();
-                    } else if (e.key === '2') {
-                        console.log('切换到轰炸机');
-                        game.switchAircraft('bomber');
-                        e.preventDefault();
-                    } else if (e.key === '3') {
-                        console.log('切换到拦截机');
-                        game.switchAircraft('interceptor');
-                        e.preventDefault();
-                    } 
+                    }
                     // 空格键放炸弹
                     else if (e.key === ' ' || e.code === 'Space') {
                         console.log('使用炸弹');
@@ -500,7 +568,7 @@
                         console.log('切换武器');
                         if (game.player && game.player.weaponManager) {
                             game.player.weaponManager.switchWeapon();
-                            game.showMessage = `武器: ${game.player.weaponManager.getCurrentWeaponName()}`;
+                            game.showMessage = `武器: ${game.player.weaponManager.activeWeapon?.type || '默认武器'}`;
                             game.messageTimer = 60;
                         }
                         e.preventDefault();

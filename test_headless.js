@@ -142,6 +142,8 @@ try {
     loadGameFile('js/combat/BulletSystem.js');
     loadGameFile('js/combat/CollisionSystem.js');
     loadGameFile('js/effects/ParticleSystem.js');
+    loadGameFile('js/data/AircraftCatalog.js');
+    loadGameFile('js/systems/AircraftManager.js');
     loadGameFile('js/levels/LevelManager.js');
     loadGameFile('js/levels/WaveManager.js');
     loadGameFile('js/boss/Boss.js');
