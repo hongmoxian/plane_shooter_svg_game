@@ -11,7 +11,7 @@
 需要 Node.js（建议 **18+**；在 Node.js 22 下完成测试）。本项目不需要后端数据库。
 
 ```bash
-git clone https://github.com/zsc/plane_shooter_svg_game.git
+git clone https://github.com/hongmoxian/plane_shooter_svg_game.git
 cd plane_shooter_svg_game
 npm run dev
 ```
@@ -203,7 +203,7 @@ npm run test:all     # 执行所有回归测试
 
 ## 项目来源与许可说明
 
-本仓库是从已有的 `plane_shooter_svg_game` 射击游戏框架延伸而来的二创项目，保留 `index.md` 和 `chapter*.md` 等设计文件。
+本仓库 Fork 自 [zsc/plane_shooter_svg_game](https://github.com/zsc/plane_shooter_svg_game)，在已有射击游戏框架上继续开发；保留 `index.md` 和 `chapter*.md` 等早期设计文件。
 
 `package.json` 当前标记了 `MIT`，**但仓库未附带单独的 `LICENSE` 文件**。在进一步再分发源代码和素材时，需要核查上游项目及所有素材的真实许可；`package.json` 的字段不等于对第三方内容的授权。
 
