@@ -19,11 +19,16 @@ class LevelManager {
         // 波次管理
         this.waveManager = null;
         this.currentWave = null;
-        this.waveIndex = 0;
+        this.waveIndex = -1;
         
         // Boss管理
         this.bossManager = null;
         this.bossActive = false;
+        this.bossSpawned = false;
+        this.bossDefeated = false;
+        this.levelCompleted = false;
+        this.outroElapsed = 0;
+        this.onLevelFinished = null;
         
         // 难度系统
         this.difficultyLevel = 1;
@@ -218,21 +223,27 @@ class LevelManager {
      * 加载关卡
      */
     loadLevel(levelIndex) {
-        if (levelIndex >= this.levels.length) {
+        if (levelIndex < 0 || levelIndex >= this.levels.length) {
             console.log('所有关卡已完成');
             return false;
         }
         
         this.currentLevelIndex = levelIndex;
-        this.currentLevel = this.levels[levelIndex];
-        this.levelData = { ...this.currentLevel };
+        this.currentLevel = JSON.parse(JSON.stringify(this.levels[levelIndex]));
+        this.levelData = this.currentLevel;
         
         // 重置状态
         this.levelTime = 0;
         this.levelPhase = 'intro';
-        this.waveIndex = 0;
+        this.waveIndex = -1;
+        this.currentWave = null;
         this.bossActive = false;
+        this.bossSpawned = false;
+        this.bossDefeated = false;
+        this.levelCompleted = false;
+        this.outroElapsed = 0;
         this.currentCheckpoint = 0;
+        if (this.waveManager) this.waveManager.reset();
         
         // 重置统计
         this.levelStats = {
@@ -256,9 +267,10 @@ class LevelManager {
      * 更新关卡
      */
     update(deltaTime) {
-        if (!this.currentLevel) return;
+        if (!this.currentLevel || this.levelCompleted) return;
         
         this.levelTime += deltaTime;
+        if (this.levelPhase === 'outro') this.outroElapsed += deltaTime;
         this.levelStats.time = this.levelTime;
         
         // 更新关卡阶段
@@ -270,7 +282,7 @@ class LevelManager {
         }
         
         // 检查Boss触发
-        if (!this.bossActive && this.shouldStartBoss()) {
+        if (this.shouldStartBoss()) {
             this.startBossBattle();
         }
         
@@ -299,13 +311,11 @@ class LevelManager {
         const waves = this.currentLevel.waves;
         
         // 检查是否需要开始新波次
-        for (let i = this.waveIndex; i < waves.length; i++) {
+        for (let i = this.waveIndex + 1; i < waves.length; i++) {
             const wave = waves[i];
             if (this.levelTime >= wave.startTime) {
-                if (i > this.waveIndex) {
-                    this.waveIndex = i;
-                    this.startWave(wave);
-                }
+                this.waveIndex = i;
+                this.startWave(wave);
             } else {
                 break;
             }
@@ -333,7 +343,7 @@ class LevelManager {
      * 检查是否应该开始Boss战
      */
     shouldStartBoss() {
-        if (!this.currentLevel.boss) return false;
+        if (!this.currentLevel.boss || this.bossSpawned || this.levelPhase !== 'main') return false;
         return this.levelTime >= this.currentLevel.boss.startTime;
     }
     
@@ -344,6 +354,9 @@ class LevelManager {
         console.log('Boss战开始！');
         this.levelPhase = 'boss';
         this.bossActive = true;
+        this.bossSpawned = true;
+        this.currentWave = null;
+        if (this.waveManager) this.waveManager.stopWave();
         
         if (this.bossManager && this.currentLevel.boss) {
             this.bossManager.spawnBoss(this.currentLevel.boss);
@@ -354,6 +367,9 @@ class LevelManager {
      * Boss被击败
      */
     onBossDefeated() {
+        if (this.bossDefeated) return;
+        this.bossDefeated = true;
+        this.outroElapsed = 0;
         console.log('Boss已被击败！');
         this.bossActive = false;
         this.levelPhase = 'outro';
@@ -373,12 +389,12 @@ class LevelManager {
      */
     isLevelComplete() {
         // Boss被击败且过场动画结束
-        if (this.levelPhase === 'outro' && this.levelTime > this.currentLevel.boss.startTime + 10) {
+        if (this.levelPhase === 'outro' && this.outroElapsed >= 2) {
             return true;
         }
         
         // 超过最大时长（生存模式）
-        if (this.levelTime >= this.currentLevel.duration) {
+        if (!this.currentLevel.boss && this.levelTime >= this.currentLevel.duration) {
             return true;
         }
         
@@ -389,6 +405,8 @@ class LevelManager {
      * 完成关卡
      */
     completeLevel() {
+        if (this.levelCompleted) return;
+        this.levelCompleted = true;
         console.log(`关卡完成: ${this.currentLevel.name}`);
         
         // 计算评分
@@ -514,8 +532,10 @@ class LevelManager {
      * 关卡完成事件
      */
     onLevelComplete() {
-        // 可以在Game类中监听此事件
         console.log('触发关卡完成事件');
+        if (typeof this.onLevelFinished === 'function') {
+            this.onLevelFinished(this.currentLevel, this.levelStats);
+        }
     }
     
     /**
@@ -526,8 +546,14 @@ class LevelManager {
         this.currentLevelIndex = 0;
         this.levelTime = 0;
         this.levelPhase = 'intro';
-        this.waveIndex = 0;
+        this.waveIndex = -1;
+        this.currentWave = null;
         this.bossActive = false;
+        this.bossSpawned = false;
+        this.bossDefeated = false;
+        this.levelCompleted = false;
+        this.outroElapsed = 0;
+        if (this.waveManager) this.waveManager.reset();
         this.checkpoints = [];
         this.currentCheckpoint = 0;
     }

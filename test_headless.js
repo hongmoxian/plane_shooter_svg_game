@@ -142,6 +142,12 @@ try {
     loadGameFile('js/combat/BulletSystem.js');
     loadGameFile('js/combat/CollisionSystem.js');
     loadGameFile('js/effects/ParticleSystem.js');
+    loadGameFile('js/levels/LevelManager.js');
+    loadGameFile('js/levels/WaveManager.js');
+    loadGameFile('js/boss/Boss.js');
+    loadGameFile('js/boss/BossManager.js');
+    loadGameFile('js/powerups/PowerUp.js');
+    loadGameFile('js/powerups/PowerUpManager.js');
     loadGameFile('js/Game.js');
     console.log('游戏文件加载成功');
 } catch (error) {
@@ -383,6 +389,43 @@ suite.test('玩家重生机制应正常工作', () => {
     assert.strictEqual(player.health, player.maxHealth, '生命值应恢复满');
     assert.strictEqual(player.isInvincible, true, '重生后应无敌');
     assert.strictEqual(player.isDead, false, '应复活');
+});
+
+// P0 integration: the real Game, BossManager and LevelManager must cooperate.
+suite.test('Boss击败后应进入通关结算并能进入下一关', () => {
+    const game = new Game();
+    game.init();
+    game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+    game.levelManager.startBossBattle();
+    const boss = game.bossManager.currentBoss;
+    assert(boss, 'Boss应该已经生成');
+    boss.isEntering = false;
+    boss.invulnerable = false;
+    boss.takeDamage(100000);
+    assert.strictEqual(boss.isDead, true);
+
+    game.bossManager.update(0.016, game.player, game.bulletSystem, game.particleSystem);
+    game.bossManager.update(3.1, game.player, game.bulletSystem, game.particleSystem);
+    assert.strictEqual(game.levelManager.levelPhase, 'outro');
+
+    game.levelManager.update(2.1);
+    assert.strictEqual(game.stateMachine.getCurrentStateName(), GameConfig.STATES.LEVEL_COMPLETE);
+    assert(game.levelResult && game.levelResult.name === '城市上空');
+
+    game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+    assert.strictEqual(game.levelManager.currentLevel.id, 'level_02');
+});
+
+suite.test('暂停后恢复不能重置玩家或关卡', () => {
+    const game = new Game();
+    game.init();
+    game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+    game.player.health = 42;
+    game.levelManager.levelTime = 15;
+    game.stateMachine.changeState(GameConfig.STATES.PAUSED);
+    game.stateMachine.changeState(GameConfig.STATES.PLAYING);
+    assert.strictEqual(game.player.health, 42);
+    assert.strictEqual(game.levelManager.levelTime, 15);
 });
 
 // 运行测试

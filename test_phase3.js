@@ -81,7 +81,7 @@ const path = require('path');
 
 function loadScript(filepath) {
     const code = fs.readFileSync(path.join(__dirname, filepath), 'utf8');
-    eval(code);
+    eval(code.replace(/^class\s+(\w+)/gm, 'global.$1 = class $1'));
 }
 
 loadScript('./js/core/GameConfig.js');
@@ -220,15 +220,15 @@ suite.test('Boss系统初始化', () => {
 
 // Test 6: Boss attack patterns
 suite.test('Boss攻击模式', () => {
-    const boss = new Boss(320, 100, 'bomber_commander');
+    const boss = new Boss({ id: 'test', maxHealth: 100 });
     const player = { x: 320, y: 600 };
     
-    // Test attack generation
-    const attacks = ['straight', 'fan', 'circular', 'homing'];
+    // 当前Boss使用统一的executeAttack接口
+    const attacks = ['straightShot', 'fanShot', 'circularBarrage', 'homingMissile'];
     for (const attack of attacks) {
-        const bullets = boss[`${attack}Attack`](player);
-        if (!Array.isArray(bullets)) {
-            throw new Error(`攻击模式 ${attack} 返回值不是数组`);
+        const bullets = boss.executeAttack(attack, player);
+        if (!Array.isArray(bullets) || bullets.length === 0) {
+            throw new Error(`攻击模式 ${attack} 未生成子弹`);
         }
     }
 });

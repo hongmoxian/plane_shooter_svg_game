@@ -61,7 +61,7 @@ class Boss {
         this.isDead = false;
         this.isEntering = true;
         this.enterTime = 0;
-        this.entranceDuration = 2000; // 2秒入场时间
+        this.entranceDuration = 2; // 秒，游戏逻辑 dt 使用秒
         
         // 视觉效果
         this.flashTime = 0;
@@ -254,7 +254,7 @@ class Boss {
     startPhaseTransition(nextPhase) {
         this.phaseTransition = true;
         this.invulnerable = true;
-        this.invulnerableTime = 1500; // 1.5秒无敌
+        this.invulnerableTime = 1.5; // 秒
         
         // 清除当前攻击
         this.isAttacking = false;
@@ -279,7 +279,7 @@ class Boss {
      * 更新弱点系统
      */
     updateWeakPoints(dt) {
-        this.weakPointCycle += dt;
+        this.weakPointCycle += dt * 1000; // 弱点暴露间隔配置使用毫秒
         
         this.weakPoints.forEach(wp => {
             if (!wp.isActive) return;
@@ -414,7 +414,7 @@ class Boss {
         
         // 更新攻击状态
         this.lastAttackTime = this.stateTime;
-        this.attackCooldown = 500; // 0.5秒最小间隔
+        this.attackCooldown = 0.5; // 秒
         this.currentAttackIndex = (this.currentAttackIndex + 1) % phase.attacks.length;
         
         return bullets;
@@ -774,7 +774,7 @@ class Boss {
         
         // 入场透明效果
         if (this.isEntering) {
-            const alpha = Math.min(1, this.enterTime / 1000);
+            const alpha = Math.min(1, this.enterTime / 1);
             renderer.ctx.globalAlpha = alpha;
         }
         
@@ -789,7 +789,7 @@ class Boss {
         }
         
         // 渲染Boss主体 - 优先使用资源管理器
-        console.log(`Boss渲染 - ID: ${this.id}, 位置: (${this.x}, ${this.y}), 活跃: ${this.active}, AssetManager存在: ${!!assetManager}, 已加载: ${assetManager?.loaded}`);
+        // 高频渲染路径不要每帧输出调试信息
         
         // 先绘制一个绿色圆圈标记Boss中心位置
         renderer.ctx.save();

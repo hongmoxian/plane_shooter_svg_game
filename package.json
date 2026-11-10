@@ -6,8 +6,12 @@
   "scripts": {
     "test": "node test_headless.js",
     "test:watch": "nodemon test_headless.js",
-    "serve": "python3 -m http.server 8080",
-    "install-test": "npm install --save-dev jsdom"
+    "serve": "node dev-server.js",
+    "install-test": "npm install --save-dev jsdom",
+    "dev": "node dev-server.js",
+    "test:phase3": "node test_phase3.js",
+    "test:p0": "node test_p0.js",
+    "test:all": "npm test && npm run test:phase3 && npm run test:p0"
   },
   "keywords": [
     "game",

@@ -215,6 +215,11 @@ class CollisionSystem {
             this.checkBulletEnemyCollisions(gameState.bulletSystem.bullets, gameState.enemies);
         }
         
+        // 玩家子弹与Boss碰撞（Boss不属于普通敌机列表）
+        if (gameState.boss && gameState.bulletSystem) {
+            this.checkBulletBossCollisions(gameState.bulletSystem.bullets, gameState.boss, gameState.bossManager);
+        }
+
         // 玩家与道具碰撞
         if (gameState.player && gameState.powerups) {
             this.checkPlayerPowerupCollisions(gameState.player, gameState.powerups);
@@ -275,6 +280,29 @@ class CollisionSystem {
         });
     }
     
+    /**
+     * 玩家子弹对Boss造成伤害，交由BossManager进行统计与死亡结算。
+     */
+    checkBulletBossCollisions(playerBullets, boss, bossManager = null) {
+        if (!boss.active || boss.isDead || boss.invulnerable) return;
+        for (const bullet of playerBullets) {
+            if (!bullet.active || !boss.active) continue;
+            const radius = (bullet.size || 3);
+            const collides = bullet.isBeam
+                ? !(bullet.x - (bullet.width || radius * 2) / 2 > boss.x + boss.width / 2 ||
+                    bullet.x + (bullet.width || radius * 2) / 2 < boss.x - boss.width / 2 ||
+                    bullet.y - (bullet.height || radius * 2) > boss.y + boss.height / 2 ||
+                    bullet.y < boss.y - boss.height / 2)
+                : this.checkCircleCollision(bullet, boss);
+            if (!collides) continue;
+            const point = { x: bullet.x, y: bullet.y };
+            if (bossManager) bossManager.onBossDamage(bullet.damage, point);
+            else boss.takeDamage(bullet.damage, point);
+            this.stats.collisions++;
+            bullet.active = false;
+        }
+    }
+
     /**
      * 检测玩家与道具碰撞
      */

@@ -393,7 +393,7 @@ class BossManager {
         if (this.currentBoss) {
             const bullets = this.currentBoss.update(dt, player, bulletSystem);
             if (bullets) {
-                bulletSystem.addBullets(bullets);
+                bulletSystem.addBullets(bullets, true);
             }
             
             // 检查Boss是否死亡
@@ -470,8 +470,12 @@ class BossManager {
             }
         }
         
-        // 创建Boss实例
-        this.currentBoss = new Boss(template);
+        // 每次生成独立配置，保留关卡难度调整后的Boss血量
+        const bossConfig = JSON.parse(JSON.stringify(template));
+        if (bossData && typeof bossData === 'object' && Number.isFinite(bossData.health)) {
+            bossConfig.maxHealth = bossData.health;
+        }
+        this.currentBoss = new Boss(bossConfig);
         this.inBossBattle = true;
         this.battleStartTime = Date.now();
         
@@ -563,7 +567,7 @@ class BossManager {
         if (!this.currentBoss) return;
         
         // 连锁爆炸效果
-        if (this.defeatTimer < 2000 && Math.random() < 0.3) {
+        if (this.defeatTimer < 2 && Math.random() < 0.3) {
             const offsetX = (Math.random() - 0.5) * this.currentBoss.width;
             const offsetY = (Math.random() - 0.5) * this.currentBoss.height;
             
@@ -585,7 +589,7 @@ class BossManager {
         }
         
         // 结束击败序列
-        if (this.defeatTimer >= 3000) {
+        if (this.defeatTimer >= 3) {
             this.defeatSequenceActive = false;
             this.currentBoss = null;
             this.inBossBattle = false;
@@ -708,7 +712,9 @@ class BossManager {
         
         switch (item.type) {
             case 'powerUp':
-                this.game.player.upgradePower(item.level || 1);
+                if (this.game.player.weaponManager?.activeWeapon) {
+                    this.game.player.weaponManager.activeWeapon.upgrade();
+                }
                 break;
             case 'bomb':
                 this.game.player.bombs = Math.min(
@@ -720,13 +726,13 @@ class BossManager {
                 this.game.player.lives += (item.count || 1);
                 break;
             case 'shield':
-                this.game.player.activateShield();
+                this.game.player.activateShield(5000);
                 break;
             case 'specialWeapon':
-                this.game.player.unlockSpecialWeapon();
+                // TODO: equip-system special weapons
                 break;
             case 'ultimateWeapon':
-                this.game.player.unlockUltimateWeapon();
+                // TODO: equip-system ultimate weapons
                 break;
         }
     }

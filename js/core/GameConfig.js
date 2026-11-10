@@ -64,6 +64,7 @@ class GameConfig {
         PLAYING: 'playing',
         PAUSED: 'paused',
         GAME_OVER: 'gameOver',
+        LEVEL_COMPLETE: 'levelComplete',
         LOADING: 'loading'
     };
 

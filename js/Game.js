@@ -27,6 +27,8 @@ class Game {
         this.bossManager = null;
         this.powerUpManager = null;
         this.currentBoss = null;
+        this.nextLevelIndex = 0;
+        this.levelResult = null;
         
         // 游戏状态
         this.isInitialized = false;
@@ -81,13 +83,21 @@ class Game {
         
         // 初始化关卡系统连接
         this.levelManager.init(this.waveManager, this.bossManager);
+        this.levelManager.onLevelFinished = (level, stats) => {
+            this.levelResult = { name: level.name, score: stats.score };
+            this.nextLevelIndex = (this.levelManager.currentLevelIndex + 1) % this.levelManager.levels.length;
+            this.stateMachine.changeState(GameConfig.STATES.LEVEL_COMPLETE);
+        };
         this.waveManager.init(
             (enemyData) => this.spawnEnemy(enemyData),
             () => console.log('波次完成')
         );
         this.bossManager.init(
             (boss) => this.spawnBoss(boss),
-            () => this.levelManager.onBossDefeated()
+            () => {
+                this.currentBoss = null;
+                this.levelManager.onBossDefeated();
+            }
         );
         this.powerUpManager.init();
         
@@ -153,13 +163,8 @@ class Game {
                 // 更新敌人
                 this.updateEnemies(dt);
                 
-                // 更新Boss
-                if (this.currentBoss && this.currentBoss.active) {
-                    const bossBullets = this.currentBoss.update(dt, this.player);
-                    if (bossBullets && bossBullets.length > 0) {
-                        this.bulletSystem.addBullets(bossBullets, true);
-                    }
-                }
+                // 统一由BossManager驱动Boss攻击、死亡特效和通关回调
+                this.bossManager.update(dt, this.player, this.bulletSystem, this.particleSystem);
                 
                 // 更新子弹系统
                 this.bulletSystem.update(dt, this.enemies);
@@ -172,7 +177,8 @@ class Game {
                     player: this.player,
                     enemies: this.enemies,
                     bulletSystem: this.bulletSystem,
-                    powerups: this.powerUpManager.powerUps
+                    powerups: this.powerUpManager.powerUps,
+                    bossManager: this.bossManager
                 };
                 
                 // 添加Boss到碰撞检测
@@ -198,6 +204,8 @@ class Game {
             };
             
             playingState.enter = () => {
+                // 暂停恢复不应重置玩家、子弹、Boss和关卡
+                if (this.stateMachine.previousState === this.stateMachine.states.get(GameConfig.STATES.PAUSED)) return;
                 console.log('进入游戏状态');
                 // 重置玩家位置和状态
                 this.player.reset();
@@ -209,10 +217,15 @@ class Game {
                 this.waveNumber = 0;
                 this.enemySpawnTimer = 0;
                 this.currentBoss = null;
+                this.levelResult = null;
+                this.bossManager.currentBoss = null;
+                this.bossManager.defeatSequenceActive = false;
+                this.bossManager.inBossBattle = false;
+                this.bossManager.clearBossQueue();
                 
-                // 加载第一关
+                // 加载所选关卡
                 if (this.levelManager) {
-                    this.levelManager.loadLevel(0);
+                    this.levelManager.loadLevel(this.nextLevelIndex);
                 }
                 
                 // 播放战斗音乐
@@ -274,7 +287,7 @@ class Game {
                 
                 // 绘制Boss
                 if (this.currentBoss) {
-                    console.log(`Game渲染Boss - 存在: ${!!this.currentBoss}, 活跃: ${this.currentBoss.active}, 位置: (${this.currentBoss.x}, ${this.currentBoss.y})`);
+                    // 已经拥有Boss状态信息，无需每帧输出日志
                     if (this.currentBoss.active) {
                         this.currentBoss.render(renderer, this.assetManager);
                         // 绘制Boss血条
@@ -291,7 +304,7 @@ class Game {
                         }
                     }
                 } else {
-                    console.log('Game渲染 - 没有currentBoss');
+                    // 无Boss时无需调试输出
                 }
                 
                 // 绘制玩家（使用SVG资源）
@@ -333,6 +346,24 @@ class Game {
             };
         }
         
+        // 通关结算状态，支持继续下一关或重新体验
+        this.stateMachine.registerState(GameConfig.STATES.LEVEL_COMPLETE, {
+            enter: () => console.log('进入通关结算'),
+            update: () => {},
+            render: (renderer) => {
+                renderer.clear();
+                renderer.drawBackground(0);
+                renderer.drawText('关卡完成！', 320, 290, 48, '#FFD700');
+                renderer.drawText(this.levelResult?.name || '', 320, 360, 28, '#FFFFFF');
+                renderer.drawText('本关得分：' + (this.levelResult?.score || 0), 320, 420, 24, '#00FFCC');
+                renderer.drawText('按 Enter 继续', 320, 520, 22, '#FFFFFF');
+            },
+            exit: () => {},
+            handleInput: (input) => {
+                if (input.isKeyPressed('Enter')) this.stateMachine.changeState(GameConfig.STATES.PLAYING);
+            }
+        });
+
         // 覆盖游戏结束状态
         const gameOverState = this.stateMachine.states.get(GameConfig.STATES.GAME_OVER);
         if (gameOverState) {
@@ -585,8 +616,7 @@ class Game {
             }
         }
         
-        // 处理子弹与敌人的碰撞效果
-        this.handleBulletCollisions();
+        // 碰撞统一在CollisionSystem处理，避免重复造成伤害
     }
     
     /**
