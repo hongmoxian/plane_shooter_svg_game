@@ -6,8 +6,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 [
-    'js/core/GameConfig.js', 'js/entities/Player.js', 'js/combat/Weapon.js',
-    'js/combat/BulletSystem.js', 'js/data/AircraftCatalog.js', 'js/systems/AircraftManager.js',
+    'js/core/GameConfig.js', 'js/entities/Player.js', 'js/entities/Enemy.js', 'js/combat/Weapon.js',
+    'js/combat/BulletSystem.js', 'js/combat/CollisionSystem.js', 'js/boss/Boss.js', 'js/data/AircraftCatalog.js', 'js/systems/AircraftManager.js',
     'js/data/EquipmentCatalog.js', 'js/systems/EquipmentManager.js',
     'js/data/PetCatalog.js', 'js/systems/PetManager.js'
 ].forEach(file => vm.runInThisContext(fs.readFileSync(file, 'utf8')
@@ -180,6 +180,117 @@ test('存档篡改不会凭空获得宠物，重复上场自动去重', () => {
     assert.equal(pets.inventory.kun.level, 10);
     assert.equal(pets.pity.gem.epic, 0);
     assert.equal(pets.pity.gem.legendary, 29);
+});
+
+
+test('宠物实际命中Boss：部分破防有效，玩家原伤害公式不变', () => {
+    const { game, pets } = fixture();
+    pets.inventory.abyss_soul = { copies: 1, level: 1 };
+    pets.equip('abyss_soul', 0);
+    const boss = new Boss({ maxHealth: 1000 });
+    boss.isEntering = false;
+    boss.invulnerable = false;
+    boss.x = game.player.x - 43;
+    boss.y = game.player.y - 62;
+    game.currentBoss = boss;
+    pets.update(.01);
+    const bullet = game.bulletSystem.bullets[0];
+    bullet.x = boss.x; bullet.y = boss.y;
+    const health = boss.health;
+    new CollisionSystem().processCollisions({
+        player: game.player, enemies: [], boss,
+        petManager: pets, bulletSystem: game.bulletSystem, powerups: []
+    });
+    const petDamage = health - boss.health;
+    assert.ok(petDamage >= 4, 'pet should no longer deal only 0.9 HP: ' + petDamage);
+    assert.equal(bullet.active, false);
+    const normal = new Boss({ maxHealth: 1000 });
+    normal.isEntering = false; normal.invulnerable = false;
+    normal.takeDamage(12);
+    assert.ok(Math.abs(1000-normal.health-.9) < 1e-7, 'ordinary player bullets keep old defense formula');
+});
+
+test('宠物子弹正常攻击敌机，真正连锁跳跃到附近两个目标', () => {
+    const { game, pets } = fixture();
+    pets.inventory.thunder_fox = { copies: 1, level: 1 };
+    pets.equip('thunder_fox', 0);
+    const coords = [[300,400], [380,380], [470,375], [620,180]];
+    const enemies = coords.map(([x,y]) => new Enemy({ x,y,maxHealth:100,dropRate:0 }));
+    game.enemies = enemies;
+    pets.update(.01);
+    const bullet = game.bulletSystem.bullets[0];
+    assert.equal(bullet.chainJumps, 2);
+    game.bulletSystem.bullets = [bullet]; // inspect one real pet shot
+    bullet.x = enemies[0].x; bullet.y = enemies[0].y;
+    new CollisionSystem().processCollisions({
+        player:game.player,enemies,petManager:pets,
+        bulletSystem:game.bulletSystem,powerups:[]
+    });
+    assert.ok(enemies[0].health < 100);
+    assert.ok(enemies[1].health < 100);
+    assert.ok(enemies[2].health < 100);
+    assert.equal(enemies[3].health, 100);
+    assert.ok(100-enemies[1].health > 100-enemies[2].health);
+    assert.equal(pets.effects.events.filter(x => x.kind === 'bolt').length, 2);
+});
+
+test('连锁闪电可攻击Boss并使用宠物专属减防规则', () => {
+    const { game, pets } = fixture();
+    pets.inventory.thunder_leopard = { copies: 1, level: 10 };
+    pets.equip('thunder_leopard', 0);
+    const first = new Enemy({ x:320,y:390,maxHealth:1000,dropRate:0 });
+    const boss = new Boss({ maxHealth: 1500 });
+    boss.isEntering=false; boss.invulnerable=false;
+    boss.x=430; boss.y=360;
+    game.enemies=[first];game.currentBoss=boss;
+    pets.update(.01);
+    const b=game.bulletSystem.bullets[0];
+    game.bulletSystem.bullets=[b];
+    b.x=first.x;b.y=first.y;
+    const oldHP=boss.health;
+    new CollisionSystem().processCollisions({
+        player:game.player,enemies:game.enemies,boss,
+        petManager:pets,bulletSystem:game.bulletSystem,powerups:[]
+    });
+    assert.ok(boss.health < oldHP);
+    assert.ok(pets.effects.events.some(x => x.kind === 'bolt'));
+});
+
+test('回血、护盾和清弹触发即时光效且随时间消退', () => {
+    const { game, pets } = fixture();
+    pets.inventory.kun={copies:1,level:10};
+    pets.equip('kun',0);
+    game.player.health = 15;
+    const health=game.player.health;
+    pets.update(4.1);
+    assert.ok(game.player.health>health);
+    assert.ok(pets.effects.events.some(e=>e.kind==='text' && e.text.includes('HP')));
+    pets.support(PetCatalog.get('imperial_cat'),10);
+    assert.ok(pets.effects.events.some(e=>e.kind==='shield'));
+    game.bulletSystem.addEnemyBullet({x:game.player.x,y:game.player.y,active:true});
+    pets.support(PetCatalog.get('wuchang'),10);
+    assert.ok(pets.effects.events.some(e=>e.kind==='ring' && e.radius===210));
+    const recorded=pets.effects.events.length;
+    let calls=0;
+    const ctx={save(){},restore(){},beginPath(){},moveTo(){calls++},lineTo(){calls++},
+        stroke(){calls++},arc(){calls++},fillText(){calls++}};
+    pets.effects.render(ctx);
+    assert.ok(recorded>0 && calls>0);
+    pets.effects.update(2);
+    assert.equal(pets.effects.events.length,0);
+});
+
+test('对象池不会将宠物标记或追踪状态泄漏给玩家子弹', () => {
+    const system=new BulletSystem();
+    const b=system.addPlayerBullet({x:100,y:100,petId:'kun',chainJumps:2,
+        isTracking:true,trackingSpeed:4,active:true});
+    b.active=false;
+    system.update(.016,[]);
+    const normal=system.addPlayerBullet({x:0,y:0,damage:10,active:true});
+    assert.equal(normal.petId,null);
+    assert.equal(normal.chainJumps,0);
+    assert.equal(normal.isTracking,false);
+    assert.equal(normal.target,null);
 });
 
 let pass = 0;

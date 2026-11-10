@@ -188,7 +188,8 @@ class Game {
                     enemies: this.enemies,
                     bulletSystem: this.bulletSystem,
                     powerups: this.powerUpManager.powerUps,
-                    bossManager: this.bossManager
+                    bossManager: this.bossManager,
+                    petManager: this.petManager
                 };
                 
                 // 添加Boss到碰撞检测

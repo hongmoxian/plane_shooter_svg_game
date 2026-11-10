@@ -660,7 +660,7 @@ class Boss {
     /**
      * 受到伤害
      */
-    takeDamage(damage, hitPoint = null) {
+    takeDamage(damage, hitPoint = null, options = {}) {
         if (this.isDead || this.invulnerable) return false;
         
         let actualDamage = damage;
@@ -684,8 +684,12 @@ class Boss {
         }
         
         // 计算最终伤害
-        actualDamage = Math.max(1, actualDamage - this.defense);
-        actualDamage *= (1 - this.damageReduction);
+        // 宠物穿透部分防御，并保留最低比例伤害；玩家武器维持原公式。
+        // 原创数值：忽略 50% 固定防御，至少保留 45% 原始伤害。
+        const defendedDamage = options.source === 'pet'
+            ? Math.max(actualDamage * 0.45, actualDamage - this.defense * 0.5)
+            : Math.max(1, actualDamage - this.defense);
+        actualDamage = defendedDamage * (1 - this.damageReduction);
         
         this.health -= actualDamage;
         

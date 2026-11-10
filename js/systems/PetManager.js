@@ -3,6 +3,70 @@
  * periodic assist effects and a separate free gacha.
  * Skill values and drop rates are fan-made, not official game data.
  */
+/**
+ * Short-lived Canvas cues for companion abilities.
+ * Separate from simulation state: animations cannot change combat outcomes.
+ */
+class PetEffects {
+    constructor() { this.events = []; }
+    emit(event) {
+        this.events.push({ ...event, duration: event.duration || 0.7, remaining: event.duration || 0.7 });
+        if (this.events.length > 70) this.events.splice(0, this.events.length - 70);
+    }
+    clear() { this.events.length = 0; }
+    update(dt) {
+        for (const event of this.events) event.remaining -= dt;
+        this.events = this.events.filter(event => event.remaining > 0);
+    }
+    render(ctx) {
+        if (!ctx) return;
+        for (const e of this.events) {
+            const progress = 1 - e.remaining / e.duration;
+            const alpha = Math.max(0, Math.min(1, e.remaining / e.duration));
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = e.color || '#BDEAFF';
+            ctx.fillStyle = e.color || '#BDEAFF';
+            if (e.kind === 'bolt') {
+                ctx.lineWidth = 4 * alpha + 1;
+                ctx.shadowColor = e.color || '#9ADFFF';
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.moveTo(e.x, e.y);
+                const dx = e.x2 - e.x, dy = e.y2 - e.y;
+                const length = Math.max(1, Math.hypot(dx, dy));
+                for (let i = 1; i < 6; i++) {
+                    const f = i / 6;
+                    const zig = (i % 2 === 0 ? -1 : 1) * 9 * alpha;
+                    ctx.lineTo(e.x + dx * f - dy / length * zig, e.y + dy * f + dx / length * zig);
+                }
+                ctx.lineTo(e.x2, e.y2);
+                ctx.stroke();
+            } else if (e.kind === 'ring' || e.kind === 'shield' || e.kind === 'flash') {
+                const radius = e.kind === 'flash'
+                    ? 8 + progress * 23
+                    : e.kind === 'shield'
+                        ? 25 + progress * 34
+                        : progress * (e.radius || 210);
+                ctx.lineWidth = e.kind === 'ring' ? 5 * (1-progress) + 1 : 3;
+                ctx.shadowColor = e.color || '#BDEAFF';
+                ctx.shadowBlur = 14;
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            } else if (e.kind === 'text') {
+                ctx.font = 'bold 19px Microsoft YaHei, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#07162A';
+                ctx.shadowBlur = 7;
+                ctx.fillText(e.text, e.x, e.y - progress * 32);
+            }
+            ctx.restore();
+        }
+    }
+}
+
 class PetManager {
     static STORAGE_KEY = 'plane-dream-pets-v1';
     static MAX_LEVEL = 10;
@@ -21,6 +85,7 @@ class PetManager {
         this.drawCount = 0;
         this.timers = new Map();
         this.supportTimers = new Map();
+        this.effects = new PetEffects();
         this.load();
     }
 
@@ -170,6 +235,7 @@ class PetManager {
     resetBattle() {
         this.timers.clear();
         this.supportTimers.clear();
+        this.effects.clear();
     }
 
     position(slot) {
@@ -179,7 +245,9 @@ class PetManager {
 
     /** Update every frame in PLAYING only. Uses the game's existing bullet pipeline. */
     update(dt) {
-        if (!(dt > 0) || !this.game.player || this.game.player.isDead) return;
+        if (!(dt > 0)) return;
+        this.effects.update(dt);
+        if (!this.game.player || this.game.player.isDead) return;
         const player = this.game.player;
         for (let slot = 0; slot < 2; slot++) {
             const id = this.slots[slot];
@@ -223,26 +291,96 @@ class PetManager {
                 size: 5 + (def.rarity === 'legendary' ? 2 : 0),
                 damage: Math.round(def.shotDamage * (1 + .13 * (level - 1))),
                 color: def.color, type: 'standard', penetration: 0,
+                petId: def.id, chainJumps: def.trait === 'chain' ? 2 : (def.trait === 'shock' ? 1 : 0),
                 isTracking: def.trait === 'shock' || def.id === 'thunder_leopard' || def.id === 'kun',
                 trackingSpeed: 4, target: target || null,
                 active: true, maxLifetime: 2500
             });
         }
         bullets.addBullets(shots, false);
+        this.effects.emit({ kind: 'flash', ...origin, color: def.color, duration: .22 });
+    }
+
+    /**
+     * Called only when the existing collision system confirms a pet bullet hit.
+     * Lightning jumps to up to 2 OTHER nearby targets, with decreasing damage.
+     * No additional projectiles or recursion: effects cannot endlessly chain.
+     */
+    onProjectileHit(bullet, target, { enemies = [], boss = null, bossManager = null, damage = 0 } = {}) {
+        if (!bullet?.petId || !target) return;
+        const def = PetCatalog.get(bullet.petId);
+        if (!def) return;
+        if (damage > 0) {
+            this.effects.emit({
+                kind: 'text', x: target.x, y: target.y - 15,
+                text: '-' + Math.round(damage), color: def.color, duration: .55
+            });
+        }
+        const jumps = Math.min(2, Math.max(0, bullet.chainJumps || 0));
+        if (!jumps) return;
+        const visited = new Set([target]);
+        let origin = target;
+        for (let step = 0; step < jumps; step++) {
+            const pool = enemies.filter(e => e?.active && !e.isDead && !visited.has(e));
+            if (boss?.active && !boss.isDead && !boss.invulnerable && !visited.has(boss)) pool.push(boss);
+            pool.sort((a, b) =>
+                Math.hypot(a.x - origin.x, a.y - origin.y) -
+                Math.hypot(b.x - origin.x, b.y - origin.y));
+            const next = pool[0];
+            if (!next || Math.hypot(next.x - origin.x, next.y - origin.y) > 205) break;
+            visited.add(next);
+            const secondaryDamage = bullet.damage * Math.pow(.58, step + 1);
+            const before = next.health;
+            if (next === boss) {
+                const hit = { x: next.x, y: next.y };
+                if (bossManager) bossManager.onBossDamage(secondaryDamage, hit, { source: 'pet' });
+                else next.takeDamage(secondaryDamage, hit, { source: 'pet' });
+            } else {
+                next.takeDamage(secondaryDamage);
+            }
+            this.effects.emit({ kind: 'bolt', x: origin.x, y: origin.y,
+                x2: next.x, y2: next.y, color: def.color, duration: .4 });
+            const actual = Math.max(0, before - next.health);
+            if (actual > 0) this.effects.emit({
+                kind: 'text', x: next.x, y: next.y - 15,
+                text: '-' + Math.round(actual), color: def.color, duration: .65
+            });
+            origin = next;
+        }
     }
 
     support(def, level) {
         const player = this.game.player;
         const bulletSystem = this.game.bulletSystem;
         if (def.trait === 'heal' && player.health > 0) {
+            const before = player.health;
             player.heal(3 + Math.floor(level / 2));
+            const restored = Math.round(player.health - before);
+            if (restored > 0) {
+                this.effects.emit({ kind: 'ring', x: player.x, y: player.y, radius: 58,
+                    color: '#7BFFBE', duration: .8 });
+                this.effects.emit({ kind: 'text', x: player.x, y: player.y - 38,
+                    text: '+' + restored + ' HP', color: '#7BFFBE', duration: 1.2 });
+            }
         } else if (def.trait === 'shield' && !player.shieldActive && !player.isInvincible) {
             player.activateShield(1800);
+            this.effects.emit({ kind: 'shield', x: player.x, y: player.y,
+                color: '#A2EFFF', duration: 1.0 });
+            this.effects.emit({ kind: 'text', x: player.x, y: player.y - 55,
+                text: '护盾', color: '#A2EFFF', duration: .95 });
         } else if (def.trait === 'clear' && bulletSystem) {
             const radius = 210;
+            let cleared = 0;
             for (const bullet of bulletSystem.enemyBullets) {
-                if (Math.hypot(bullet.x - player.x, bullet.y - player.y) <= radius) bullet.active = false;
+                if (bullet.active && Math.hypot(bullet.x - player.x, bullet.y - player.y) <= radius) {
+                    bullet.active = false;
+                    cleared++;
+                }
             }
+            this.effects.emit({ kind: 'ring', x: player.x, y: player.y,
+                radius, color: '#DAB6FF', duration: .65 });
+            this.effects.emit({ kind: 'text', x: player.x, y: player.y - 60,
+                text: '幽影清弹 ' + cleared, color: '#DAB6FF', duration: 1.0 });
         }
     }
 
@@ -272,5 +410,7 @@ class PetManager {
             ctx.fillText(def.icon, x, y + .5);
             ctx.restore();
         }
+        // Render readable flashes, rings, floating numbers and lightning above the sprites.
+        this.effects.render(ctx);
     }
 }

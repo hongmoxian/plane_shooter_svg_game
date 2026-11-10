@@ -212,12 +212,14 @@ class CollisionSystem {
         
         // 玩家子弹与敌机碰撞
         if (gameState.bulletSystem && gameState.enemies) {
-            this.checkBulletEnemyCollisions(gameState.bulletSystem.bullets, gameState.enemies);
+            this.checkBulletEnemyCollisions(gameState.bulletSystem.bullets, gameState.enemies,
+                gameState.petManager, gameState.boss, gameState.bossManager);
         }
         
         // 玩家子弹与Boss碰撞（Boss不属于普通敌机列表）
         if (gameState.boss && gameState.bulletSystem) {
-            this.checkBulletBossCollisions(gameState.bulletSystem.bullets, gameState.boss, gameState.bossManager);
+            this.checkBulletBossCollisions(gameState.bulletSystem.bullets, gameState.boss,
+                gameState.bossManager, gameState.petManager, gameState.enemies || []);
         }
 
         // 玩家与道具碰撞
@@ -261,7 +263,7 @@ class CollisionSystem {
     /**
      * 检测玩家子弹与敌机碰撞
      */
-    checkBulletEnemyCollisions(playerBullets, enemies) {
+    checkBulletEnemyCollisions(playerBullets, enemies, petManager = null, boss = null, bossManager = null) {
         playerBullets.forEach(bullet => {
             if (!bullet.active) return;
             
@@ -270,7 +272,13 @@ class CollisionSystem {
                 if (!enemy || !enemy.active || enemy.isDead) continue;
                 
                 if (this.checkCircleCollision(bullet, enemy)) {
+                    const before = enemy.health;
                     this.handleBulletEnemyCollision(bullet, enemy);
+                    if (bullet.petId && petManager) {
+                        petManager.onProjectileHit(bullet, enemy, {
+                            enemies, boss, bossManager, damage: Math.max(0, before - enemy.health)
+                        });
+                    }
                     this.stats.collisions++;
                     
                     // 如果子弹没有穿透能力，停止检测
@@ -283,7 +291,7 @@ class CollisionSystem {
     /**
      * 玩家子弹对Boss造成伤害，交由BossManager进行统计与死亡结算。
      */
-    checkBulletBossCollisions(playerBullets, boss, bossManager = null) {
+    checkBulletBossCollisions(playerBullets, boss, bossManager = null, petManager = null, enemies = []) {
         if (!boss.active || boss.isDead || boss.invulnerable) return;
         for (const bullet of playerBullets) {
             if (!bullet.active || !boss.active) continue;
@@ -296,8 +304,15 @@ class CollisionSystem {
                 : this.checkCircleCollision(bullet, boss);
             if (!collides) continue;
             const point = { x: bullet.x, y: bullet.y };
-            if (bossManager) bossManager.onBossDamage(bullet.damage, point);
-            else boss.takeDamage(bullet.damage, point);
+            const previousHealth = boss.health;
+            const opts = bullet.petId ? { source: 'pet' } : {};
+            if (bossManager) bossManager.onBossDamage(bullet.damage, point, opts);
+            else boss.takeDamage(bullet.damage, point, opts);
+            if (bullet.petId && petManager) {
+                petManager.onProjectileHit(bullet, boss, {
+                    enemies, boss, bossManager, damage: Math.max(0, previousHealth - boss.health)
+                });
+            }
             this.stats.collisions++;
             bullet.active = false;
         }

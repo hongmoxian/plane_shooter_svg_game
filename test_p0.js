@@ -161,6 +161,19 @@ test('Boss击败动画最终触发一次关卡回调', () => {
     assert.ok(game.player.score > 0);
 });
 
+test('Boss统计记录减防后的有效伤害，而非原始伤害', () => {
+    const manager = new BossManager(fakeGame());
+    const boss = manager.spawnBoss('bomber_commander');
+    boss.isEntering = false;
+    boss.invulnerable = false;
+    const before = boss.health;
+    const previousStats = manager.battleStats.damageDealt;
+    manager.onBossDamage(12, null, { source: 'pet' });
+    const effective = before - boss.health;
+    assert.ok(effective > 0);
+    assert.ok(Math.abs(manager.battleStats.damageDealt - previousStats - effective) < 1e-6);
+});
+
 let pass = 0;
 for (const { name, fn } of tests) {
     try {

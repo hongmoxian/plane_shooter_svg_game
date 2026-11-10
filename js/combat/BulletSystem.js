@@ -63,6 +63,12 @@ class BulletSystem {
         bullet.lifetime = 0;
         bullet.penetrated = 0;
         bullet.trail = [];
+        // 对象池复用时清掉宠物/追踪元数据，防止主机子弹被识别为宠物子弹。
+        bullet.petId = null;
+        bullet.chainJumps = 0;
+        bullet.isTracking = false;
+        bullet.target = null;
+        bullet.trackingSpeed = 0;
         return bullet;
     }
     

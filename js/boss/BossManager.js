@@ -761,14 +761,14 @@ class BossManager {
     /**
      * 处理Boss受伤
      */
-    onBossDamage(damage, hitPoint) {
-        if (this.currentBoss) {
-            this.battleStats.damageDealt += damage;
-            this.battleStats.accurateHits++;
-            
-            return this.currentBoss.takeDamage(damage, hitPoint);
-        }
-        return false;
+    onBossDamage(damage, hitPoint, options = {}) {
+        if (!this.currentBoss) return false;
+        const healthBefore = this.currentBoss.health;
+        const destroyed = this.currentBoss.takeDamage(damage, hitPoint, options);
+        const actualDamage = Math.max(0, healthBefore - this.currentBoss.health);
+        this.battleStats.damageDealt += actualDamage;
+        if (actualDamage > 0) this.battleStats.accurateHits++;
+        return destroyed;
     }
     
     /**

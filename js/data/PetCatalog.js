@@ -11,13 +11,13 @@ class PetCatalog {
     });
     static PETS = Object.freeze([
         Object.freeze({ id: 'abyss_soul', name: '深渊电魂', year: 2018, rarity: 'rare', color:'#62D9FF', icon:'⚡',
-            trait: 'shock', role: '雷电射击', description: '追踪闪电弹，辅助攻击。',
+            trait: 'shock', role: '雷电射击', description: '追踪闪电弹，命中后传导一次。',
             shotDamage: 12, fireInterval: 1.25, passive: 'damage', bonus: .025 }),
         Object.freeze({ id: 'holy_angel', name: '圣魔天使', year: 2019, rarity: 'rare', color:'#FFD2E4', icon:'✧',
             trait: 'heal', role: '恢复守护', description: '自动治疗，附带圣光弹。',
             shotDamage: 10, fireInterval: 1.35, passive: 'health', bonus: .04 }),
         Object.freeze({ id: 'thunder_fox', name: '苍雷妖狐', year: 2019, rarity: 'epic', color:'#9CB6FF', icon:'✦',
-            trait: 'chain', role: '雷狐连射', description: '连续散射，提升主机火力。',
+            trait: 'chain', role: '雷狐连射', description: '三发连射，命中后最多传导两次。',
             shotDamage: 18, fireInterval: 1.05, passive: 'damage', bonus: .055 }),
         Object.freeze({ id: 'imperial_cat', name: '御猫展昭', year: 2019, rarity: 'epic', color:'#FFD299', icon:'✿',
             trait: 'shield', role: '护卫盾', description: '周期性提供短时护盾。',
@@ -32,7 +32,7 @@ class PetCatalog {
             trait: 'heal', role: '深海庇佑', description: '持续恢复，并释放水流导弹。',
             shotDamage: 25, fireInterval: .95, passive: 'health', bonus: .095 }),
         Object.freeze({ id: 'thunder_leopard', name: '宇光雷豹', year: 2021, rarity: 'legendary', color:'#FFE78D', icon:'✴',
-            trait: 'chain', role: '雷霆追击', description: '高速追踪连射，提高攻击。',
+            trait: 'chain', role: '雷霆追击', description: '高速追踪弹，命中后传导两次。',
             shotDamage: 30, fireInterval: .72, passive: 'damage', bonus: .10 })
     ]);
     static list() { return this.PETS; }
