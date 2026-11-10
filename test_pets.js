@@ -1,0 +1,191 @@
+/**
+ * P3 pet & free-summoning regression suite.
+ * Run: node test_pets.js
+ */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+[
+    'js/core/GameConfig.js', 'js/entities/Player.js', 'js/combat/Weapon.js',
+    'js/combat/BulletSystem.js', 'js/data/AircraftCatalog.js', 'js/systems/AircraftManager.js',
+    'js/data/EquipmentCatalog.js', 'js/systems/EquipmentManager.js',
+    'js/data/PetCatalog.js', 'js/systems/PetManager.js'
+].forEach(file => vm.runInThisContext(fs.readFileSync(file, 'utf8')
+    .replace(/^class\s+(\w+)/gm, 'global.$1 = class $1'), { filename: file }));
+
+function makeStorage() {
+    const map = new Map();
+    return { getItem(k) { return map.get(k) || null; }, setItem(k,v) { map.set(k, v); } };
+}
+function fixture(rng = () => .5, storage = makeStorage()) {
+    const game = {
+        state: GameConfig.STATES.MENU,
+        stateMachine: { getCurrentStateName() { return game.state; } },
+        player: new Player(), bulletSystem: new BulletSystem(), enemies: [], currentBoss: null
+    };
+    game.aircraftManager = new AircraftManager(game);
+    game.equipmentManager = new EquipmentManager(game, storage, rng);
+    game.petManager = new PetManager(game, storage, rng);
+    game.aircraftManager.applyAircraft();
+    return { game, pets: game.petManager, storage };
+}
+const tests = [];
+function test(label, fn) { tests.push([label, fn]); }
+
+test('8只历史名称宠物具独立分级、技能配置', () => {
+    assert.equal(PetCatalog.list().length, 8);
+    assert.equal(new Set(PetCatalog.list().map(x => x.id)).size, 8);
+    for (const pet of PetCatalog.list()) {
+        assert.ok(PetCatalog.RARITIES[pet.rarity]);
+        assert.ok(pet.shotDamage > 0);
+        assert.ok(pet.fireInterval > 0);
+    }
+});
+
+test('1000次抽奖不用金币/钻石，宠物抽数与装备抽数隔离', () => {
+    const { pets, game } = fixture();
+    for (let i = 0; i < 100; i++) assert.equal(pets.draw(10, 'coin').length, 10);
+    assert.equal(pets.drawCount, 1000);
+    assert.equal(game.equipmentManager.drawCount, 0);
+    assert.equal(game.equipmentManager.getCurrency().gold, Infinity);
+});
+
+test('金币钻石池分别10抽史诗+、30抽传说保底', () => {
+    for (const banner of ['coin', 'gem']) {
+        const { pets } = fixture(() => .5);
+        const draws = pets.draw(10, banner).concat(pets.draw(10, banner), pets.draw(10, banner));
+        assert.equal(draws[9].rarity, 'epic');
+        assert.equal(draws[9].guaranteed, true);
+        assert.equal(draws[29].rarity, 'legendary');
+        assert.equal(draws[29].guaranteed, true);
+        assert.equal(pets.pity[banner].legendary, 0);
+    }
+});
+
+test('两池保底独立，装备池与宠物池也独立', () => {
+    const { pets, game } = fixture();
+    pets.draw(10, 'coin');
+    assert.equal(pets.pity.gem.epic, 0);
+    assert.equal(game.equipmentManager.pity.coin.epic, 0);
+});
+
+test('重复宠物保留份数，不删除升级与出战记录', () => {
+    const { pets } = fixture(() => .5);
+    const a = pets.draw(1, 'gem')[0];
+    const b = pets.draw(1, 'gem')[0];
+    assert.equal(a.petId, b.petId);
+    assert.equal(a.newItem, true);
+    assert.equal(b.newItem, false);
+    assert.equal(pets.inventory[a.petId].copies, 2);
+    pets.equip(a.petId, 0);
+    pets.upgrade(a.petId, true);
+    pets.draw(1, 'gem');
+    assert.equal(pets.inventory[a.petId].level, 10);
+    assert.equal(pets.slots[0], a.petId);
+});
+
+test('最多两只且不能同一只双槽重复出战', () => {
+    const { pets } = fixture();
+    pets.unlockAllMax();
+    assert.equal(pets.getActive().length, 2);
+    assert.equal(pets.equip('kun', 0), true);
+    assert.deepEqual(pets.slots, ['kun', null]);
+    assert.equal(pets.getActive().length, 1);
+    assert.equal(pets.equip('thunder_leopard', 1), true);
+    assert.equal(pets.equip('nonsense', 0), false);
+    assert.equal(pets.equip('kun', 2), false);
+});
+
+test('出战和满级真正叠加主机属性，并能正常恢复', () => {
+    const { pets, game } = fixture();
+    const baseHP = game.player.maxHealth;
+    const baseDamage = game.player.weaponManager.activeWeapon.damage;
+    pets.unlockAllMax();
+    assert.ok(game.player.maxHealth > baseHP);
+    assert.ok(game.player.weaponManager.activeWeapon.damage > baseDamage);
+    assert.ok(game.player.health <= game.player.maxHealth);
+    pets.unequip(0);
+    pets.unequip(1);
+    assert.equal(game.player.maxHealth, baseHP);
+    assert.equal(game.player.weaponManager.activeWeapon.damage, baseDamage);
+});
+
+test('战斗中宠物按间隔自动发弹，且可攻击Boss', () => {
+    const { pets, game } = fixture();
+    pets.unlockAllMax();
+    game.aircraftManager.prepareForBattle();
+    game.state = GameConfig.STATES.PLAYING;
+    game.currentBoss = { x: 320, y: 130, active: true, isDead: false };
+    pets.update(.1);
+    assert.ok(game.bulletSystem.bullets.length >= 2);
+    assert.ok(game.bulletSystem.bullets.some(b => b.damage > 0 && b.vy < 0));
+    const before = game.bulletSystem.bullets.length;
+    pets.update(.1);
+    assert.equal(game.bulletSystem.bullets.length, before);
+    pets.update(2);
+    assert.ok(game.bulletSystem.bullets.length > before);
+});
+
+test('辅助技能可回血、护盾和清除敌方子弹', () => {
+    const { pets, game } = fixture();
+    pets.unlockAllMax();
+    game.player.health = 15;
+    pets.support(PetCatalog.get('kun'), 10);
+    assert.ok(game.player.health > 15);
+    pets.support(PetCatalog.get('imperial_cat'), 10);
+    assert.equal(game.player.shieldActive, true);
+    game.bulletSystem.addEnemyBullet({ x: game.player.x, y: game.player.y, active: true });
+    pets.support(PetCatalog.get('wuchang'), 10);
+    assert.equal(game.bulletSystem.enemyBullets[0].active, false);
+});
+
+test('战斗、暂停禁止抽奖换宠及升级', () => {
+    const { pets, game } = fixture();
+    pets.unlockAllMax();
+    const count = pets.drawCount;
+    game.state = GameConfig.STATES.PLAYING;
+    assert.equal(pets.draw(10, 'gem'), null);
+    assert.equal(pets.equip('wuchang', 0), false);
+    assert.equal(pets.unequip(0), false);
+    assert.equal(pets.upgrade('wuchang'), false);
+    assert.equal(pets.unlockAllMax(), false);
+    game.state = GameConfig.STATES.PAUSED;
+    assert.equal(pets.draw(1, 'coin'), null);
+    assert.equal(pets.drawCount, count);
+});
+
+test('本地存档恢复保底、重复、满级和双槽，保留装备存档', () => {
+    const storage = makeStorage();
+    const a = fixture(() => .5, storage);
+    a.pets.draw(10, 'gem');
+    a.pets.unlockAllMax();
+    a.pets.equip('wuchang', 1);
+    a.game.equipmentManager.unlockAllMax();
+    const b = fixture(() => .5, storage);
+    assert.equal(b.pets.drawCount, 10);
+    assert.deepEqual(b.pets.slots, ['thunder_leopard', 'wuchang']);
+    assert.equal(b.pets.inventory.wuchang.level, 10);
+    assert.equal(b.game.equipmentManager.getModifiers().fullSet, 'dog');
+});
+
+test('存档篡改不会凭空获得宠物，重复上场自动去重', () => {
+    const storage = makeStorage();
+    storage.setItem(PetManager.STORAGE_KEY, JSON.stringify({
+        version: 1, inventory: { kun: { copies: 1, level: 100 }, invented: { copies: 20, level: 10 } },
+        slots: ['kun', 'kun'], pity: { gem: { epic: -3, legendary: 999 } }
+    }));
+    const { pets } = fixture(() => .5, storage);
+    assert.deepEqual(pets.slots, ['kun', null]);
+    assert.equal(pets.inventory.invented, undefined);
+    assert.equal(pets.inventory.kun.level, 10);
+    assert.equal(pets.pity.gem.epic, 0);
+    assert.equal(pets.pity.gem.legendary, 29);
+});
+
+let pass = 0;
+for (const [label, fn] of tests) {
+    try { fn(); console.log('PASS ' + label); pass++; }
+    catch (err) { console.error('FAIL ' + label + ': ' + err.stack); }
+}
+console.log('P3 pets: ' + pass + '/' + tests.length);
+if (pass !== tests.length) process.exitCode = 1;

@@ -7,6 +7,7 @@ class CollectionUI {
         this.game = game;
         this.system = game.equipmentManager;
         this.view = 'fleet';
+        this.petUI = null;
         this.banner = 'gem';
         this.busy = false;
         this.revealTimers = [];
@@ -19,7 +20,9 @@ class CollectionUI {
         this.viewNodes = {
             fleet: document.getElementById('fleetView'),
             gear: document.getElementById('gearView'),
-            draw: document.getElementById('drawView')
+            draw: document.getElementById('drawView'),
+            pets: document.getElementById('petsView'),
+            petdraw: document.getElementById('petDrawView')
         };
         for (const button of this.tabs) button.addEventListener('click', () => this.setView(button.dataset.view));
         document.getElementById('coinBannerButton').addEventListener('click', () => this.setBanner('coin'));
@@ -46,6 +49,7 @@ class CollectionUI {
     setView(view) {
         if (!this.viewNodes[view]) return;
         this.finishReveal();
+        this.petUI?.finishReveal();
         this.view = view;
         for (const button of this.tabs) {
             const active = button.dataset.view === view;
@@ -228,11 +232,15 @@ class CollectionUI {
         this.refreshPity();
         this.refreshSlots();
         this.refreshInventory();
+        this.petUI?.refreshAll();
     }
 
     sync() {
         // Completing a reveal before leaving the hangar avoids lingering animations.
         const state = this.game.stateMachine.getCurrentStateName();
-        if (state !== GameConfig.STATES.MENU) this.finishReveal();
+        if (state !== GameConfig.STATES.MENU) {
+            this.finishReveal();
+            this.petUI?.finishReveal();
+        }
     }
 }

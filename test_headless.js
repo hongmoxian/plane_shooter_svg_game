@@ -146,6 +146,8 @@ try {
     loadGameFile('js/data/EquipmentCatalog.js');
     loadGameFile('js/systems/AircraftManager.js');
     loadGameFile('js/systems/EquipmentManager.js');
+    loadGameFile('js/data/PetCatalog.js');
+    loadGameFile('js/systems/PetManager.js');
     loadGameFile('js/levels/LevelManager.js');
     loadGameFile('js/levels/WaveManager.js');
     loadGameFile('js/boss/Boss.js');

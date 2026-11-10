@@ -29,6 +29,7 @@ class Game {
         this.currentBoss = null;
         this.aircraftManager = null;
         this.equipmentManager = null;
+        this.petManager = null;
         this.nextLevelIndex = 0;
         this.levelResult = null;
         
@@ -73,6 +74,7 @@ class Game {
         this.assetManager = new AssetManager();
         this.aircraftManager = new AircraftManager(this);
         this.equipmentManager = new EquipmentManager(this);
+        this.petManager = new PetManager(this);
         
         // 初始化战斗系统
         this.bulletSystem = new BulletSystem();
@@ -170,6 +172,8 @@ class Game {
                 
                 // 统一由BossManager驱动Boss攻击、死亡特效和通关回调
                 this.bossManager.update(dt, this.player, this.bulletSystem, this.particleSystem);
+                // 两只出战宠物进行自动射击与周期性辅助
+                this.petManager.update(dt);
                 
                 // 更新子弹系统
                 this.bulletSystem.update(dt, this.currentBoss && this.currentBoss.active
@@ -216,6 +220,7 @@ class Game {
                 // 重置玩家位置和状态
                 this.player.reset();
                 this.aircraftManager.prepareForBattle();
+                this.petManager.resetBattle();
                 // 清空战斗系统
                 this.enemies = [];
                 this.bulletSystem.clear();
@@ -322,6 +327,8 @@ class Game {
                     }
                 }
                 
+                // 绘制跟随战机的两只宠物（原创简易图标）
+                this.petManager.render(renderer);
                 // 绘制HUD
                 renderer.drawHUD({
                     health: this.player.health,

@@ -100,6 +100,8 @@ loadScript('./js/data/AircraftCatalog.js');
 loadScript('./js/data/EquipmentCatalog.js');
 loadScript('./js/systems/AircraftManager.js');
 loadScript('./js/systems/EquipmentManager.js');
+loadScript('./js/data/PetCatalog.js');
+loadScript('./js/systems/PetManager.js');
 loadScript('./js/levels/LevelManager.js');
 loadScript('./js/levels/WaveManager.js');
 loadScript('./js/boss/Boss.js');

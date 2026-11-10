@@ -340,6 +340,47 @@
             #hangarTabs button { font-size: 12px; }
             .slot-cell { padding: 6px 2px; }
         }
+        /* P3 companion gallery & separate summon banner */
+        #petsView.hidden, #petDrawView.hidden, #petSkipReveal.hidden { display: none !important; }
+        #hangarTabs { flex-wrap: wrap; }
+        #hangarTabs button { flex: 1 1 30%; min-height: 36px; }
+        .pet-slots { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; margin: 8px 0 13px; }
+        .pet-slot { background: #173653; border: 1px solid #478FC3; border-radius: 10px; padding: 11px; text-align: center; }
+        .pet-slot strong { display: block; color: #B9E2FF; font-size: 11px; }
+        .pet-slot span { display: block; font-size: 14px; color: #FFE49F; margin: 5px 0; }
+        .pet-slot button { font-size: 11px; color: #E2F7FF; background: #3A5275; border: 1px solid #7A9FC4; border-radius: 6px; cursor: pointer; }
+        .pet-notice { min-height: 16px; font-size: 12px; text-align: center; color: #A9E7FE; }
+        .pet-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+        .pet-card { padding: 9px; border: 1px solid #547394; background: #192B45; border-radius: 10px; }
+        .pet-card.rare { border-color: #528DC1; }
+        .pet-card.epic { border-color: #986ED4; }
+        .pet-card.legendary { border-color: #E9BD64; background: linear-gradient(140deg,#423723,#1A2843); }
+        .pet-card.unowned { opacity: .6; }
+        .pet-header { display: flex; gap: 9px; align-items: center; }
+        .pet-icon { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; border: 1px solid #7E9BB9; border-radius: 50%; font-size: 21px; background: #273C5E; }
+        .pet-name { display: grid; gap: 3px; }
+        .pet-name strong { font-size: 13px; color: #E8F6FF; }
+        .pet-name small { font-size: 10px; color: #B6C9EA; }
+        .pet-description { margin: 6px 0 8px; font-size: 11px; min-height: 30px; color: #BDCFDF; }
+        .pet-controls { display: flex; flex-wrap: wrap; gap: 4px; }
+        .pet-controls button {
+            cursor: pointer; border: 1px solid #5D92C5; border-radius: 6px;
+            background: #264774; color: #F1F6FF; padding: 5px 7px; font-size: 11px;
+        }
+        .pet-controls button:disabled { cursor: not-allowed; opacity: .45; }
+        #petDrawRates,#petDrawPity,#petDrawAnnouncement { text-align: center; font-size: 12px; color: #CFDDF5; margin: 11px 0; }
+        #petDrawPity { color: #FFD49A; }
+        #petDrawOne,#petDrawTen { flex: 1; border-radius: 9px; padding: 12px; font-weight: 700; font-size: 14px; }
+        #petDrawOne { background: linear-gradient(125deg,#634CA6,#965BBC); color: white; border: 1px solid #A787D8; }
+        #petDrawTen { background: linear-gradient(125deg,#7D4A2B,#B38A38); color: white; border: 1px solid #EAC77D; }
+        #petDrawResults .prize-card.rare { border-color: #88CBF7; background: #1A3954; }
+        #petDrawResults .prize-card.legendary { box-shadow: 0 0 20px #A87830; }
+        #petDrawResults .prize-card .prize-icon { font-size: 26px; }
+        #petDrawAnnouncement { min-height: 20px; color: #FFE6AD; }
+        @media(max-width:620px) {
+            #hangarTabs button { flex: 1 1 30%; font-size: 11px; padding: 7px 1px; }
+            .pet-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -351,7 +392,9 @@
         <nav id="hangarTabs" aria-label="仓库标签">
             <button type="button" data-view="fleet" class="active">✈ 战机</button>
             <button type="button" data-view="gear">♜ 装备仓库</button>
-            <button type="button" data-view="draw">✧ 幸运抽奖</button>
+            <button type="button" data-view="draw">✧ 装备抽奖</button>
+            <button type="button" data-view="pets">🐾 双宠出战</button>
+            <button type="button" data-view="petdraw">✦ 宠物抽奖</button>
         </nav>
         <div id="fleetView">
             <p class="hangar-subtitle">四架战机免费体验 · 点击卡片更换战机</p>
@@ -385,6 +428,32 @@
             </div>
             <div id="drawAnnouncement" aria-live="polite">选择单抽或十连，看看今天的手气！</div>
             <div id="drawResults" class="draw-results" aria-live="polite"></div>
+        </div>
+        <div id="petsView" class="hidden">
+            <p class="hangar-subtitle">双宠物出战 · 自动攻击与辅助技能 · 属性与技能为网页版原创设计</p>
+            <div class="collection-heading"><strong>出战伙伴</strong><small>最多两只，不可重复</small></div>
+            <div id="petSlots" class="pet-slots"></div>
+            <div class="collection-actions">
+                <button type="button" id="petUnlockAllButton">✦ 全部宠物满级解锁</button>
+            </div>
+            <p id="petNotice" class="pet-notice">点击左侧 / 右侧出战，或前往宠物抽奖。</p>
+            <div id="petGrid" class="pet-grid"></div>
+        </div>
+        <div id="petDrawView" class="hidden">
+            <p class="hangar-subtitle">宠物召唤 · 稀有、史诗、传说 · 独立保底 · 钻石金币不限量</p>
+            <div class="banner-switch">
+                <button type="button" id="petCoinBanner" class="pet-banner">金币召唤</button>
+                <button type="button" id="petGemBanner" class="pet-banner active">钻石召唤</button>
+            </div>
+            <p id="petDrawRates" class="draw-rates"></p>
+            <p id="petDrawPity" class="pity-display"></p>
+            <div class="collection-actions draw-actions">
+                <button type="button" id="petDrawOne">单抽 · 免费</button>
+                <button type="button" id="petDrawTen">十连 · 免费</button>
+                <button type="button" id="petSkipReveal" class="hidden">跳过动画</button>
+            </div>
+            <p id="petDrawAnnouncement" aria-live="polite">寻找你的第一只宠物伙伴！</p>
+            <div id="petDrawResults" class="draw-results" aria-live="polite"></div>
         </div>
     </section>
     <button type="button" id="skillButton" class="hidden">Q · 战机技能</button>
@@ -481,9 +550,12 @@
     <script src="js/systems/AircraftManager.js"></script>
     <script src="js/data/EquipmentCatalog.js"></script>
     <script src="js/systems/EquipmentManager.js"></script>
+    <script src="js/data/PetCatalog.js"></script>
+    <script src="js/systems/PetManager.js"></script>
     <script src="js/Game.js"></script>
     <script src="js/ui/HangarUI.js"></script>
     <script src="js/ui/CollectionUI.js"></script>
+    <script src="js/ui/PetUI.js"></script>
     <script>
         let game;
         
@@ -494,7 +566,10 @@
             game.start();
             const hangarUI = new HangarUI(game);
             hangarUI.init();
+            const petUI = new PetUI(game);
+            petUI.init();
             const collectionUI = new CollectionUI(game);
+            collectionUI.petUI = petUI;
             collectionUI.init();
             
             // 获取元素
