@@ -263,16 +263,129 @@
             #hangarPanel h2 { font-size: 19px; }
             #audioControls { transform: scale(.68); transform-origin: top right; }
         }
+        /* P2 free collection and prize reveal */
+        #hangarPanel { top: 4%; max-height: 73vh; }
+        #gearView.hidden, #drawView.hidden, #fleetView.hidden,
+        #skipRevealButton.hidden { display: none !important; }
+        .currency-strip {
+            display: flex; justify-content: center; align-items: center; flex-wrap: wrap;
+            gap: 14px; color: #D6E9FF; font-size: 13px; margin: 8px 0 14px;
+        }
+        .currency-strip b { color: #FFDF78; font-size: 18px; }
+        .currency-strip small { color: #7CF2D0; font-size: 11px; }
+        #hangarTabs, .banner-switch { display: flex; gap: 8px; margin-bottom: 12px; }
+        #hangarTabs button, .banner-switch button {
+            flex: 1; background: #152947; border: 1px solid #466A9B;
+            border-radius: 9px; color: #BED7FA; cursor: pointer;
+            padding: 10px 6px; font-weight: 700; font-size: 13px;
+        }
+        #hangarTabs button.active, .banner-switch button.active {
+            background: #235579; color: #fff; border-color: #93E5FF;
+            box-shadow: inset 0 0 0 1px #93E5FF;
+        }
+        .collection-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 8px; }
+        .collection-heading strong { color: #E1F5FF; }
+        .collection-heading small { color: #B9C9E6; font-size: 11px; }
+        .slot-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+        .slot-cell { border: 1px solid #435B7C; border-radius: 9px; padding: 8px 4px; min-height: 54px; text-align: center; background: #152640; }
+        .slot-cell strong { display: block; font-size: 10px; color: #AEC6E5; }
+        .slot-cell span { font-size: 10px; color: #fff; overflow-wrap: anywhere; }
+        #suitStatus { color: #FFE09E; text-align: center; min-height: 25px; font-size: 12px; padding: 8px 0; }
+        .collection-actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; }
+        .collection-actions button, .gear-actions button {
+            background: #264A75; color: #E5F6FF; cursor: pointer;
+            padding: 7px 10px; border: 1px solid #5488B8; border-radius: 8px;
+            font-weight: 650; font-size: 12px;
+        }
+        #unlockMaxButton { background: linear-gradient(135deg, #7555BA, #9A5FCB); border-color: #CCADF9; }
+        .collection-actions button:hover, .gear-actions button:hover { filter: brightness(1.2); }
+        .collection-actions button:disabled, .gear-actions button:disabled { opacity: .4; cursor: not-allowed; }
+        #collectionStatus { text-align: center; color: #A8D7FC; font-size: 11px; margin: 7px 0; }
+        .inventory-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+        .gear-card { border: 1px solid #445A7B; border-radius: 11px; background: #152541; padding: 9px; }
+        .gear-card.not-owned { opacity: .55; }
+        .gear-card.epic { border-color: #8C73C6; }
+        .gear-card.legendary { border-color: #E7AD48; }
+        .gear-top { display: flex; gap: 8px; align-items: center; margin-bottom: 7px; }
+        .gear-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: #263F61; color: #FFDC92; font-size: 22px; }
+        .gear-title { min-width: 0; }
+        .gear-title strong { display: block; font-size: 12px; overflow-wrap: anywhere; }
+        .gear-title small { display: block; font-size: 10px; color: #B6C7E4; margin-top: 3px; }
+        .gear-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+        .gear-actions button { padding: 4px 7px; font-size: 11px; }
+        #drawView .draw-rates, #drawView .pity-display { text-align: center; font-size: 12px; color: #D8E8FF; line-height: 1.8; margin: 6px 0; }
+        #drawView .pity-display { color: #FFDC9E; }
+        .draw-actions { margin-top: 13px; }
+        #drawOneButton, #drawTenButton { flex: 1; padding: 12px 8px; background: linear-gradient(135deg, #624EAB, #9757B9); font-size: 15px; border-color: #CFABFF; }
+        #drawTenButton { background: linear-gradient(135deg, #8B512D, #A67C24); border-color: #FFCE83; }
+        #drawAnnouncement { color: #F2DEB1; text-align: center; font-size: 13px; min-height: 20px; margin: 16px 0 9px; }
+        .draw-results { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px; min-height: 90px; }
+        .prize-card {
+            border: 1px solid #8196AC; border-radius: 10px;
+            min-height: 93px; padding: 8px 3px; text-align: center; background: #1E304A;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px;
+            animation: prize-pop .42s cubic-bezier(.18,1.25,.5,1) both;
+        }
+        .prize-card.epic { border-color: #CB8CFF; background: radial-gradient(circle, #51346F, #211E3F); }
+        .prize-card.legendary { border-color: #FFDD7A; background: radial-gradient(circle, #86612A, #3B2718); box-shadow: 0 0 14px rgba(255,200,76,.45); }
+        .prize-card .prize-icon { font-size: 22px; color: #FFE8A4; }
+        .prize-card strong { font-size: 10px; line-height: 1.2; overflow-wrap: anywhere; }
+        .prize-card small { font-size: 9px; color: #BFD3E5; }
+        .prize-card .is-new { color: #8BFFE0; }
+        @keyframes prize-pop { from { opacity: 0; transform: translateY(18px) scale(.6) rotateY(100deg); } to { opacity:1; transform:translateY(0) scale(1) rotateY(0); } }
+        @media(max-width:620px) {
+            #hangarPanel { top: 3%; max-height: 72vh; }
+            .inventory-grid { grid-template-columns: 1fr; }
+            .draw-results { grid-template-columns: repeat(3,minmax(0,1fr)); }
+            #hangarTabs button { font-size: 12px; }
+            .slot-cell { padding: 6px 2px; }
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" tabindex="0"></canvas>
     <div id="debugInfo"></div>
     <section id="hangarPanel" aria-label="战机仓库">
-        <h2>✦ 战机仓库 · 圆梦计划</h2>
-        <p class="hangar-subtitle">四架战机免费体验 · 技能为网页版原创设计<br>点击卡片选战机，开战后按 Q 使用技能</p>
-        <div id="aircraftGrid"></div>
-        <p id="selectedPlaneText"></p>
+        <h2>✦ 飞机大战 · 圆梦计划</h2>
+        <div class="currency-strip"><span>金币 <b>∞</b></span><span>钻石 <b>∞</b></span><small>全部免费 · 无真实充值</small></div>
+        <nav id="hangarTabs" aria-label="仓库标签">
+            <button type="button" data-view="fleet" class="active">✈ 战机</button>
+            <button type="button" data-view="gear">♜ 装备仓库</button>
+            <button type="button" data-view="draw">✧ 幸运抽奖</button>
+        </nav>
+        <div id="fleetView">
+            <p class="hangar-subtitle">四架战机免费体验 · 点击卡片更换战机</p>
+            <div id="aircraftGrid"></div>
+            <p id="selectedPlaneText"></p>
+        </div>
+        <div id="gearView" class="hidden">
+            <div class="collection-heading"><strong>装备搭配</strong><small>五个装备槽 · 装备影响战斗数值</small></div>
+            <div id="equippedSlots" class="slot-grid"></div>
+            <div id="suitStatus"></div>
+            <div class="collection-actions">
+                <button type="button" id="unlockMaxButton">✦ 圆梦：全部解锁满级</button>
+                <button type="button" id="equipDogButton">穿神犬套</button>
+                <button type="button" id="equipPigButton">穿天蓬套</button>
+            </div>
+            <p id="collectionStatus"></p>
+            <div id="inventoryGrid" class="inventory-grid"></div>
+        </div>
+        <div id="drawView" class="hidden">
+            <p class="hangar-subtitle">随机惊喜、重复掉落、保底出货都保留，金币和钻石永远不限量。</p>
+            <div class="banner-switch">
+                <button type="button" id="coinBannerButton" data-banner="coin">金币补给</button>
+                <button type="button" id="gemBannerButton" data-banner="gem" class="active">钻石祈愿</button>
+            </div>
+            <p id="drawRates" class="draw-rates"></p>
+            <p id="pityDisplay" class="pity-display"></p>
+            <div class="collection-actions draw-actions">
+                <button type="button" id="drawOneButton">单抽 · 免费</button>
+                <button type="button" id="drawTenButton">十连 · 免费</button>
+                <button type="button" id="skipRevealButton" class="hidden">跳过动画</button>
+            </div>
+            <div id="drawAnnouncement" aria-live="polite">选择单抽或十连，看看今天的手气！</div>
+            <div id="drawResults" class="draw-results" aria-live="polite"></div>
+        </div>
     </section>
     <button type="button" id="skillButton" class="hidden">Q · 战机技能</button>
     <button type="button" id="backHangarButton" class="hidden">返回仓库 · 更换战机</button>
@@ -366,8 +479,11 @@
     <script src="js/powerups/PowerUpManager.js"></script>
     <script src="js/data/AircraftCatalog.js"></script>
     <script src="js/systems/AircraftManager.js"></script>
+    <script src="js/data/EquipmentCatalog.js"></script>
+    <script src="js/systems/EquipmentManager.js"></script>
     <script src="js/Game.js"></script>
     <script src="js/ui/HangarUI.js"></script>
+    <script src="js/ui/CollectionUI.js"></script>
     <script>
         let game;
         
@@ -378,6 +494,8 @@
             game.start();
             const hangarUI = new HangarUI(game);
             hangarUI.init();
+            const collectionUI = new CollectionUI(game);
+            collectionUI.init();
             
             // 获取元素
             const startButton = document.getElementById('startButton');
@@ -444,6 +562,7 @@
             // 监听状态变化，显示/隐藏按钮
             game.stateMachine.onStateChange((newState) => {
                 hangarUI.sync();
+                collectionUI.sync();
                 if (newState === GameConfig.STATES.MENU) {
                     startButton.textContent = '开始游戏';
                     startButton.classList.remove('hidden');

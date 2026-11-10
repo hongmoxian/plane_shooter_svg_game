@@ -39,18 +39,21 @@ class AircraftManager {
         const def = this.selected;
         const player = this.game.player;
         if (!def || !player) return;
+        const gear = this.game.equipmentManager?.getModifiers() ||
+            { damage: 1, health: 1, speed: 1, energy: 1, skillCooldown: 1 };
         player.aircraftId = def.id;
         player.aircraftName = def.name;
         player.aircraftColor = def.color;
         player.aircraftType = def.legacyAsset;
-        player.maxHealth = def.stats.maxHealth;
+        player.maxHealth = Math.round(def.stats.maxHealth * gear.health);
         player.health = Math.min(player.health, player.maxHealth);
-        player.maxSpeed = def.stats.maxSpeed;
+        player.maxSpeed = Math.round(def.stats.maxSpeed * gear.speed);
         player.baseSpeed = Math.min(300, def.stats.maxSpeed);
         player.accelerationRate = def.stats.acceleration;
         player.hitboxRadius = def.stats.hitRadius;
         player.hitBox.width = def.stats.hitRadius * 2;
         player.hitBox.height = def.stats.hitRadius * 2;
+        player.energyRegen = 10 * gear.energy;
         player.maxBombs = 3;
         player.bombs = Math.min(player.bombs, player.maxBombs);
 
@@ -58,10 +61,13 @@ class AircraftManager {
         weaponManager.addWeapon('laser', new LaserCannon(1));
         weaponManager.addWeapon('missile', new MissileLauncher(1));
         const weapon = weaponManager.weapons.get(def.weapon.type);
-        weapon.damage = def.weapon.damage;
+        weapon.damage = Math.round(def.weapon.damage * gear.damage);
         weapon.fireRate = def.weapon.fireRate;
         weapon.fireInterval = 1000 / weapon.fireRate;
         weapon.energyCost = def.weapon.energyCost;
+        for (const entry of weaponManager.weapons.values()) {
+            if (entry !== weapon) entry.damage *= gear.damage;
+        }
         weaponManager.setActiveWeapon(def.weapon.type);
         // Tab remains a usable secondary weapon, for comparison with the selected main weapon.
         weaponManager.setSecondaryWeapon(def.weapon.type === 'machinegun' ? 'laser' : 'machinegun');
@@ -133,8 +139,11 @@ class AircraftManager {
                 return false;
         }
 
+        const gear = game.equipmentManager?.getModifiers() || { damage: 1, skillCooldown: 1 };
+        for (const bullet of shots) bullet.damage *= gear.damage;
         if (shots.length) game.bulletSystem.addBullets(shots, false);
-        this.cooldownRemaining = def.skill.cooldown;
+        game.equipmentManager?.onSkillUsed();
+        this.cooldownRemaining = def.skill.cooldown * gear.skillCooldown;
         game.showMessage = def.skill.name + '！';
         game.messageTimer = 90;
         return true;

@@ -5,7 +5,8 @@ const vm = require('node:vm');
 for (const file of [
     'js/core/GameConfig.js', 'js/combat/Weapon.js',
     'js/combat/BulletSystem.js', 'js/entities/Player.js',
-    'js/data/AircraftCatalog.js', 'js/systems/AircraftManager.js'
+    'js/data/AircraftCatalog.js', 'js/data/EquipmentCatalog.js',
+    'js/systems/AircraftManager.js', 'js/systems/EquipmentManager.js'
 ]) {
     vm.runInThisContext(fs.readFileSync(file, 'utf8')
         .replace(/^class\s+(\w+)/gm, 'global.$1 = class $1'), { filename: file });

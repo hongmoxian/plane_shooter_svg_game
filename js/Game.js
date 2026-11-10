@@ -28,6 +28,7 @@ class Game {
         this.powerUpManager = null;
         this.currentBoss = null;
         this.aircraftManager = null;
+        this.equipmentManager = null;
         this.nextLevelIndex = 0;
         this.levelResult = null;
         
@@ -71,6 +72,7 @@ class Game {
         this.player = new Player();
         this.assetManager = new AssetManager();
         this.aircraftManager = new AircraftManager(this);
+        this.equipmentManager = new EquipmentManager(this);
         
         // 初始化战斗系统
         this.bulletSystem = new BulletSystem();
